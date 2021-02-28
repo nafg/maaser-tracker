@@ -1,0 +1,15 @@
+/data/
+.bloop/
+/.bsp/
+/.idea/
+/.metals/
+/.vscode/
+/js/target/
+/jvm/target/
+/out/
+/target/
+/shared/.js/target/
+/shared/.jvm/target/
+/project/target
+/project/project/target
+metals.sbt
