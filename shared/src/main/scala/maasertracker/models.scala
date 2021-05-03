@@ -134,7 +134,7 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
              maaserDate: Option[LocalDate] = None): List[Either[Transfer, Transaction]] =
       txs match {
         case Nil            => Nil
-        case Left(x) :: xs  => Left(x) :: loop(xs)
+        case Left(x) :: xs  => Left(x) :: loop(xs, None)
         case Right(x) :: xs =>
           if (maaserDate.exists(x.date < _)) Nil
           else if (isMaaserPayment(x)) loop(xs, Some(x.date))

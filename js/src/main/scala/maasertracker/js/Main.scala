@@ -12,9 +12,10 @@ import typings.antd.antdStrings.small
 import typings.antd.components.{Transfer => _, _}
 import typings.antd.formFormMod.FormLayout
 import typings.antd.tableInterfaceMod.ColumnType
+import typings.antd.tooltipMod.TooltipPropsWithTitle
 import typings.antd.{antdBooleans, antdStrings}
 import typings.rcTable
-import typings.react.mod.CSSProperties
+import typings.react.mod.{CSSProperties, RefAttributes}
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.Future
@@ -128,7 +129,7 @@ object Main {
             <.div(
               <.div("Loading...").when(state.loading),
               state.error.map(e => <.div("ERROR: " + e)),
-              Form.layout(FormLayout.vertical)(
+              Form().layout(FormLayout.vertical)(
                 Row.gutter(16)(
                   state.items.toTagMod { item =>
                     Col(
@@ -166,46 +167,44 @@ object Main {
                 ),
                 Row.gutter(16)(
                   Col.span(12)(
-                    Form
-                      .Item.label("Accounts")(
-                        Select[js.Array[String]]()
-                          .mode(antdStrings.multiple)
-                          .value(state.visibleAccounts.toJSArray)
-                          .onChange((value, _) => self.modState(_.copy(visibleAccounts = value.toSet)))(
-                            state.info.accounts.groupBy(_._2.institution).toVdomArray { case (institution, accounts) =>
-                              Select
-                                .OptGroup.withKey(institution.institution_id).label(institution.name)(
-                                  accounts.toVdomArray { case (accountId, acct) =>
-                                    Select.Option(accountId)(s"${acct.account.name} (${acct.account.subtype})")
-                                  }
-                                )
-                            }
-                          )
-                      )
+                    Form.Form().label("Accounts")(
+                      Select[js.Array[String]]()
+                        .mode(antdStrings.multiple)
+                        .value(state.visibleAccounts.toJSArray)
+                        .onChange((value, _) => self.modState(_.copy(visibleAccounts = value.toSet)))(
+                          state.info.accounts.groupBy(_._2.institution).toVdomArray { case (institution, accounts) =>
+                            Select
+                              .OptGroup.withKey(institution.institution_id).label(institution.name)(
+                                accounts.toVdomArray { case (accountId, acct) =>
+                                  Select.Option(accountId)(s"${acct.account.name} (${acct.account.subtype})")
+                                }
+                              )
+                          }
+                        )
+                    )
                   ),
                   Col.span(12)(
-                    Form
-                      .Item.label("Categories")(
-                        Select[js.Array[String]]()
-                          .mode(antdStrings.multiple)
-                          .maxTagCount(5)
-                          .value(state.visibleCategories.map(_.asJson.noSpaces).toJSArray)
-                          .onChange { (value, _) =>
-                            self.modState { state =>
-                              state.copy(
-                                visibleCategories =
-                                  value.map(str => io.circe.parser.decode[List[String]](str).toTry.get).to(SortedSet)
-                              )
-                            }
-                          }(
-                            state.categories.distinct.toVdomArray { cat =>
-                              Select.Option(cat.asJson.noSpaces)(
-                                if (cat.isEmpty) "None"
-                                else cat.mkString(" > ")
-                              )
-                            }
-                          )
-                      )
+                    Form.Form().label("Categories")(
+                      Select[js.Array[String]]()
+                        .mode(antdStrings.multiple)
+                        .maxTagCount(5)
+                        .value(state.visibleCategories.map(_.asJson.noSpaces).toJSArray)
+                        .onChange { (value, _) =>
+                          self.modState { state =>
+                            state.copy(
+                              visibleCategories =
+                                value.map(str => io.circe.parser.decode[List[String]](str).toTry.get).to(SortedSet)
+                            )
+                          }
+                        }(
+                          state.categories.distinct.toVdomArray { cat =>
+                            Select.Option(cat.asJson.noSpaces)(
+                              if (cat.isEmpty) "None"
+                              else cat.mkString(" > ")
+                            )
+                          }
+                        )
+                    )
                   )
                 )
               ),
@@ -214,10 +213,9 @@ object Main {
                 .dataSource(state.visibleTransactions.reverse.toJSArray)
                 .columnsVarargs(
                   columnType("date", "Date") { tx =>
-                    Tooltip
-                      .TooltipPropsWithTitleRefAttributes.title(tx.transactionId)(
-                        tx.date.toString
-                      )
+                    Tooltip(TooltipPropsWithTitle().setTitle(tx.transactionId).setChildren(
+                      tx.date.toString
+                    ).combineWith(RefAttributes()))
                   },
                   columnType("account", "Account")(t => accountLabel(state.info.accounts(t.accountId))),
                   columnType("name", "Name")(_.name),

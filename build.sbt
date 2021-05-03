@@ -7,7 +7,7 @@ name := "maaser"
 inThisBuild(
   Seq(
     version := "0.1",
-    scalaVersion := "2.13.4",
+    scalaVersion := "2.13.5",
     scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint", "-Ymacro-annotations")
   )
 )
@@ -27,17 +27,17 @@ commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::web
 
 lazy val start = TaskKey[Unit]("start")
 
-val Http4sVersion  = "0.21.19"
+val Http4sVersion  = "0.21.22"
 val LogbackVersion = "1.2.3"
 
 val jvm = project
   .dependsOn(shared.jvm)
   .settings(
     libraryDependencies ++= Seq(
-      "com.lihaoyi"                  %% "cask"                 % "0.7.8",
-      "com.lihaoyi"                  %% "scalatags"            % "0.9.3",
+      "com.lihaoyi"                  %% "cask"                 % "0.7.10",
+      "com.lihaoyi"                  %% "scalatags"            % "0.9.4",
       "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.11.4",
-      "com.plaid"                     % "plaid-java"           % "8.1.0",
+      "com.plaid"                     % "plaid-java"           % "8.2.0",
       "org.dizitart"                  % "nitrite"              % "3.4.3"
     ),
     reForkOptions := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),
@@ -68,16 +68,16 @@ val js = project
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
       "com.github.japgolly.scalajs-react" %%% "extra"           % "1.7.7",
-      "io.github.cquiroz"                 %%% "scala-java-time" % "2.1.0"
+      "io.github.cquiroz"                 %%% "scala-java-time" % "2.2.2"
     ),
     Compile / npmDependencies ++= Seq(
-      "react"             -> "17.0.1",
-      "react-dom"         -> "17.0.1",
-      "@types/react"      -> "17.0.2",
-      "@types/react-dom"  -> "17.0.1",
-      "csstype"           -> "3.0.6",
+      "react"             -> "17.0.2",
+      "react-dom"         -> "17.0.2",
+      "@types/react"      -> "17.0.4",
+      "@types/react-dom"  -> "17.0.3",
+      "csstype"           -> "3.0.8",
       "@types/prop-types" -> "15.7.3",
-      "antd"              -> "4.12.3"
+      "antd"              -> "4.15.4"
     ),
     webpackConfigFile := Some(baseDirectory.value / "custom.webpack.config.js"),
     Compile / npmDevDependencies ++= Seq(
