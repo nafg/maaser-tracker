@@ -99,8 +99,8 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
       matcher.description.forall(_ == tx.name)
 
   private def isIncome(tx: Transaction) =
-    (tx.amount < 0 && !nonMaaserIncomeMatchers.exists(matches(tx, _))) ||
-      (tx.amount > 0 && tx.category == List("Tax", "Payment"))
+    !nonMaaserIncomeMatchers.exists(matches(tx, _)) &&
+      (tx.amount < 0 || (tx.amount > 0 && tx.category == List("Tax", "Payment")))
 
   def isMaaserPayment(tx: Transaction) = tx.amount > 0 && maaserPaymentMatchers.exists(matches(tx, _))
 

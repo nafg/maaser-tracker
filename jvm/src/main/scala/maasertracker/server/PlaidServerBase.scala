@@ -3,6 +3,7 @@ package maasertracker.server
 import com.plaid.client.request.{LinkTokenCreateRequest, TransactionsGetRequest}
 import com.plaid.client.response.TransactionsGetResponse
 import maasertracker._
+import retrofit2.Response
 
 import java.time.{Instant, LocalDate, ZoneId}
 import java.util.Date
@@ -11,8 +12,6 @@ import scala.jdk.CollectionConverters._
 
 trait PlaidServerBase {
   val transactionsMap = new ConcurrentHashMap[PlaidItem, retrofit2.Response[TransactionsGetResponse]]().asScala
-
-  def startDate = configRepo().knownMaaserBalances.lastKey
 
   def createLinkToken(products: Seq[String], mod: LinkTokenCreateRequest => LinkTokenCreateRequest = identity) =
     plaidService.linkTokenCreate(
@@ -27,7 +26,7 @@ trait PlaidServerBase {
       )
     )
 
-  protected def transactions(item: PlaidItem): retrofit2.Response[TransactionsGetResponse] =
+  protected def transactions(item: PlaidItem, startDate: LocalDate): Response[TransactionsGetResponse] =
     transactionsMap.getOrElseUpdate(
       item, {
         println("Getting transactions for " + item)
@@ -53,10 +52,13 @@ trait PlaidServerBase {
     )
 
   protected def transactionsInfo = {
-    val data =
+    val config = configRepo()
+
+    val startDate = config.knownMaaserBalances.lastKey
+    val data      =
       for (item <- itemsRepo())
         yield {
-          val resp = transactions(item)
+          val resp = transactions(item, startDate)
           if (!resp.isSuccessful)
             (Nil, Nil)
           else {
@@ -69,7 +71,6 @@ trait PlaidServerBase {
 
     val (accounts, txs) = data.unzip
 
-    val config = configRepo()
     val result =
       TransactionsInfo(
         accounts =
@@ -86,18 +87,18 @@ trait PlaidServerBase {
             .sortBy(_.getDate)
             .reverse
             .map { tx =>
-              Right(
-                Transaction(
-                  accountId = tx.getAccountId,
-                  transactionId = tx.getTransactionId,
-                  name = tx.getName,
-                  amount = tx.getAmount,
-                  transactionType = tx.getTransactionType,
-                  category = Option(tx.getCategory).map(_.asScala.toList).getOrElse(Nil),
-                  date = LocalDate.parse(tx.getDate)
-                )
+              Transaction(
+                accountId = tx.getAccountId,
+                transactionId = tx.getTransactionId,
+                name = tx.getName,
+                amount = tx.getAmount,
+                transactionType = tx.getTransactionType,
+                category = Option(tx.getCategory).map(_.asScala.toList).getOrElse(Nil),
+                date = LocalDate.parse(tx.getDate)
               )
-            },
+            }
+            .dropWhile(_.date.isBefore(startDate))
+            .map(Right(_)),
         startingMaaserBalance = config.knownMaaserBalances.last._2,
         maaserPaymentMatchers = config.maaserPaymentMatchers,
         nonMaaserIncomeMatchers = config.nonMaaserIncomeMatchers

@@ -211,7 +211,7 @@ object Main {
               ),
               Table[Either[Transfer, Transaction]]()
                 .pagination(antdBooleans.`false`)
-                .dataSource(state.visibleTransactions.toJSArray)
+                .dataSource(state.visibleTransactions.reverse.toJSArray)
                 .columnsVarargs(
                   columnType("date", "Date") { tx =>
                     Tooltip
@@ -224,7 +224,7 @@ object Main {
                   columnType("category", "Category")(_.category.mkString(" > ")),
                   columnType("transactionType", "Type")(_.transactionType),
                   columnType_("amount", "Amount") { t =>
-                    val amount = t.fold(_.withdrawal.amount, _.amount)
+                    val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
                     f"$$$amount%,.2f"
                   },
                   columnTypeTx("tag", "Tag")(t => state.info.tags.get(t.transactionId).mkString),

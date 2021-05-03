@@ -56,17 +56,14 @@ object PlaidHttp4sServer extends IOApp with PlaidServerBase {
       case GET -> Root / "linkToken" :? Params.accessToken(accessToken) =>
         callAsync(createLinkToken(Nil, _.withAccessToken(accessToken)))
           .flatMap(res => Ok(res.getLinkToken.asJson))
-          .recoverWith { case ResponseFailed(eb) =>
-            println(eb.body())
-            BadRequest(eb.toString)
-          }
+          .recoverWith { case ResponseFailed(eb) => BadRequest(eb.toString) }
       case GET -> Root / "items"                                        =>
         block(itemsRepo()).flatMap(items => Ok(items.asJson))
       case req @ POST -> Root / "items"                                 =>
         for {
-          addItemRequest                <- req.as[AddItemRequest]
+          addItemRequest <- req.as[AddItemRequest]
           itemPublicTokenExchangeRequest = new ItemPublicTokenExchangeRequest(addItemRequest.publicToken)
-          res                           <-
+          res <-
             callAsync(plaidService.itemPublicTokenExchange(itemPublicTokenExchangeRequest))
               .flatMap { plaidResponse =>
                 block(itemsRepo.modify(_ :+ PlaidItem(plaidResponse.getAccessToken, addItemRequest.institution))) *>
