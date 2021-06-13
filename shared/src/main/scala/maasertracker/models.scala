@@ -21,7 +21,7 @@ case class AddItemRequest(publicToken: String, institution: Institution)
 case class Account(name: String, subtype: String)
 
 @JsonCodec
-case class AccountInfo(institution: Institution, account: Account)
+case class AccountInfo(id: String, institution: Institution, account: Account)
 
 @JsonCodec
 case class Transaction(accountId: String,
