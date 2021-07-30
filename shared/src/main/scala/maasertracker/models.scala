@@ -44,11 +44,12 @@ case class TransactionMatcher(institution: Option[String], description: Option[S
 
 @JsonCodec
 case class TransactionsInfo(accounts: Map[String, AccountInfo],
-                            transactions: Seq[Either[Transfer, Transaction]],
+                            transactions: Seq[TransactionsInfo.Item],
                             startingMaaserBalance: Double,
                             maaserPaymentMatchers: Seq[TransactionMatcher],
-                            nonMaaserIncomeMatchers: Seq[TransactionMatcher]) {
-  def removeTransfers = {
+                            nonMaaserIncomeMatchers: Seq[TransactionMatcher],
+                            errors: Map[String, Seq[PlaidError]]) {
+  def combineTransfers = {
     val transferCategories =
       Set(
         List("Transfer", "Credit"),
@@ -64,7 +65,7 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
         a.amount == -b.amount &&
         ChronoUnit.DAYS.between(a.date, b.date).abs < 7
 
-    def loop(txs: List[Either[Transfer, Transaction]]): List[Either[Transfer, Transaction]] =
+    def loop(txs: List[TransactionsInfo.Item]): List[TransactionsInfo.Item] =
       txs match {
         case Nil            => Nil
         case Left(_) :: as  => loop(as)
@@ -78,8 +79,7 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
               }
           }
 
-          def loop2(as2: List[Either[Transfer, Transaction]])
-              : (Either[Transfer, Transaction], List[Either[Transfer, Transaction]]) =
+          def loop2(as2: List[TransactionsInfo.Item]): (TransactionsInfo.Item, List[TransactionsInfo.Item]) =
             as2 match {
               case Nil                                    => Right(a)       -> Nil
               case Right(TransferMatch(transfer)) :: as22 => Left(transfer) -> as22
@@ -130,8 +130,7 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
   }
 
   def untilLastMaaserPayment = {
-    def loop(txs: List[Either[Transfer, Transaction]],
-             maaserDate: Option[LocalDate] = None): List[Either[Transfer, Transaction]] =
+    def loop(txs: List[TransactionsInfo.Item], maaserDate: Option[LocalDate] = None): List[TransactionsInfo.Item] =
       txs match {
         case Nil            => Nil
         case Left(x) :: xs  => Left(x) :: loop(xs, None)
@@ -146,6 +145,8 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
 }
 
 object TransactionsInfo {
-  implicit def transferOrTransaction: Codec.AsObject[Either[Transfer, Transaction]] =
+  type Item = Either[Transfer, Transaction]
+
+  implicit def transferOrTransaction: Codec.AsObject[Item] =
     Codec.codecForEither[Transfer, Transaction]("transfer", "transaction")
 }

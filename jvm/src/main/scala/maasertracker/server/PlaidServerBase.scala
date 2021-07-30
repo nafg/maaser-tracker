@@ -143,7 +143,7 @@ trait PlaidServerBase {
         maaserPaymentMatchers = config.maaserPaymentMatchers,
         nonMaaserIncomeMatchers = config.nonMaaserIncomeMatchers
       )
-        .removeTransfers
+        .combineTransfers
 
     result
   }
