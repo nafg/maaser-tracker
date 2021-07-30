@@ -9,6 +9,9 @@ import java.time.temporal.ChronoUnit
 import scala.math.Ordering.Implicits.infixOrderingOps
 
 @JsonCodec
+case class PlaidError(error_type: String, error_code: String, error_message: String)
+
+@JsonCodec
 case class Institution(name: String, institution_id: String)
 
 @JsonCodec

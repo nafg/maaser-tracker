@@ -30,7 +30,7 @@ object Main {
   val CSS: js.Object = js.native
   locally(CSS)
 
-  case class State(info: TransactionsInfo = TransactionsInfo(Map.empty, Seq.empty, 0, Nil, Nil),
+  case class State(info: TransactionsInfo = TransactionsInfo(Map.empty, Seq.empty, 0, Nil, Nil, Map.empty),
                    items: Seq[PlaidItem] = Nil,
                    categories: Seq[List[String]] = Nil,
                    loading: Boolean = true,
@@ -92,14 +92,22 @@ object Main {
               Form().layout(FormLayout.vertical)(
                 Row.gutter(16).style(CSSProperties().setMarginBottom(16))(
                   state.items.toTagMod { item =>
-                    Col(
-                      Text(item.institution.name + " "),
-                      Button("Update")
+                    val maybeErrors = state.info.errors.get(item.institution.institution_id)
+                    val button      =
+                      Button("Update" + (if (maybeErrors.exists(_.nonEmpty)) " (!)" else ""))
                         .onClick { _ =>
                           ajax[String]("/api/linkToken?accessToken=" + item.accessToken)
                             .flatMapSync(token => Callback(makePlaid(token)((_, _) => Callback.empty).open()))
                             .toCallback
                         }
+                    Col(
+                      Text(item.institution.name + " "),
+                      maybeErrors match {
+                        case None         => button
+                        case Some(errors) =>
+                          button
+                            .title(errors.map(_.error_message).mkString("\n"))
+                      }
                     )
                   },
                   Button

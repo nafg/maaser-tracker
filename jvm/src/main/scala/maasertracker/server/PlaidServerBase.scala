@@ -2,6 +2,7 @@ package maasertracker.server
 
 import com.plaid.client.request.{LinkTokenCreateRequest, TransactionsGetRequest}
 import com.plaid.client.response.{TransactionsGetResponse, Account => PlaidAccount}
+import io.circe.parser
 import maasertracker._
 import retrofit2.Response
 
@@ -13,7 +14,10 @@ import scala.jdk.CollectionConverters._
 
 trait PlaidServerBase {
   val transactionsMap =
-    new ConcurrentHashMap[PlaidItem, (Iterable[AccountInfo], Iterable[Transaction])]().asScala
+    new ConcurrentHashMap[
+      PlaidItem,
+      Either[(PlaidItem, Seq[PlaidError]), (Iterable[AccountInfo], Iterable[Transaction])]
+    ]().asScala
 
   def createLinkToken(products: Seq[String], mod: LinkTokenCreateRequest => LinkTokenCreateRequest = identity) =
     plaidService.linkTokenCreate(
@@ -50,84 +54,79 @@ trait PlaidServerBase {
     val config = configRepo()
 
     val startDate = config.knownMaaserBalances.lastKey
-    val data      =
-      for (item <- itemsRepo())
-        yield {
-          val maybeResp =
-            transactionsMap.updateWith(item) {
-              case Some(x) => Some(x)
-              case None    =>
-                val accountsRepo                              =
-                  new JsonRepo[Iterable[AccountInfo]](s"${item.institution.institution_id}/accounts")
-                val transactionsRepo                          =
-                  new JsonRepo[Iterable[Transaction]](s"${item.institution.institution_id}/transactions")
-                val cachedTransactions: Iterable[Transaction] =
-                  if (transactionsRepo.exists)
-                    transactionsRepo()
-                  else
-                    Nil
-                val latestCached                              = cachedTransactions.map(_.date).maxOption
-                val now                                       = Instant.now()
-                val start                                     =
-                  latestCached.getOrElse(LocalDate.of(2000, 1, 1))
-                    .minusDays(14)
-                    .atStartOfDay(ZoneId.systemDefault())
-                    .toInstant
-                println("Getting transactions for " + item + " since " + start)
 
-                def getTransactions: Seq[Response[TransactionsGetResponse]] = {
-                  val pageSize               = 500
-                  val transactionsGetRequest =
-                    new TransactionsGetRequest(item.accessToken, Date.from(start), Date.from(now))
-                      .withCount(pageSize)
+    def fetch(item: PlaidItem): Either[(PlaidItem, Seq[PlaidError]), (Seq[AccountInfo], Seq[Transaction])] = {
+      val accountsRepo                              =
+        new JsonRepo[Iterable[AccountInfo]](s"${item.institution.institution_id}/accounts")
+      val transactionsRepo                          =
+        new JsonRepo[Iterable[Transaction]](s"${item.institution.institution_id}/transactions")
+      val cachedTransactions: Iterable[Transaction] =
+        if (transactionsRepo.exists)
+          transactionsRepo()
+        else
+          Nil
+      val latestCached                              = cachedTransactions.map(_.date).maxOption
+      val now                                       = Instant.now()
+      val start                                     =
+        latestCached.getOrElse(LocalDate.of(2000, 1, 1))
+          .minusDays(14)
+          .atStartOfDay(ZoneId.systemDefault())
+          .toInstant
+      println("Getting transactions for " + item + " since " + start)
 
-                  @tailrec
-                  def loop(responses: Seq[Response[TransactionsGetResponse]])
-                      : Seq[Response[TransactionsGetResponse]] = {
-                    lazy val totalSoFar = responses.map(_.body.getTransactions.size()).sum
+      def getTransactions: Seq[Response[TransactionsGetResponse]] = {
+        val pageSize               = 500
+        val transactionsGetRequest =
+          new TransactionsGetRequest(item.accessToken, Date.from(start), Date.from(now))
+            .withCount(pageSize)
 
-                    def hasMore = totalSoFar < responses.lastOption.fold(Int.MaxValue)(_.body().getTotalTransactions)
+        @tailrec
+        def loop(responses: Seq[Response[TransactionsGetResponse]]): Seq[Response[TransactionsGetResponse]] = {
+          lazy val totalSoFar = responses.map(_.body.getTransactions.size()).sum
 
-                    if (responses.forall(_.isSuccessful) && hasMore) {
-                      val request  = transactionsGetRequest.withOffset(totalSoFar)
-                      println(s"withOffset($totalSoFar)")
-                      val response = plaidService.transactionsGet(request).execute()
-                      loop(responses :+ response)
-                    } else
-                      responses
-                  }
+          def hasMore = totalSoFar < responses.lastOption.fold(Int.MaxValue)(_.body().getTotalTransactions)
 
-                  loop(Nil)
-                }
-
-                val results             = getTransactions
-                val (errors, successes) =
-                  results.partitionMap(res => if (res.isSuccessful) Right(res.body()) else Left(res.errorBody()))
-                if (errors.nonEmpty) {
-                  println("Errors for " + item)
-                  errors.foreach(errorBody => println(errorBody.string()))
-                  None
-                } else {
-                  val returnedAccounts     =
-                    successes.flatMap(_.getAccounts.asScala).distinctBy(_.getAccountId).map(mkAccountInfo(item, _))
-                  val returnedTransactions = successes.flatMap(_.getTransactions.asScala).map(mkTransaction)
-                  val returnedTxIds        = returnedTransactions.map(_.transactionId).toSet
-                  val returnedAccIds       = returnedAccounts.map(_.id).toSet
-                  val transactions         =
-                    returnedTransactions ++
-                      cachedTransactions.filterNot(tx => returnedTxIds.contains(tx.transactionId))
-                  val cachedAccounts       = if (accountsRepo.exists) accountsRepo() else Nil
-                  val accounts             =
-                    returnedAccounts ++ cachedAccounts.filterNot(acc => returnedAccIds.contains(acc.id))
-                  accountsRepo() = accounts
-                  transactionsRepo() = transactions
-                  Some((accounts, transactions))
-                }
-            }
-          maybeResp.getOrElse((Nil, Nil))
+          if (responses.forall(_.isSuccessful) && hasMore) {
+            val request  = transactionsGetRequest.withOffset(totalSoFar)
+            println(s"withOffset($totalSoFar)")
+            val response = plaidService.transactionsGet(request).execute()
+            loop(responses :+ response)
+          } else
+            responses
         }
 
-    val (accounts, txs) = data.unzip
+        loop(Nil)
+      }
+
+      val results             = getTransactions
+      val (errors, successes) =
+        results.partitionMap(res => if (res.isSuccessful) Right(res.body()) else Left(res.errorBody()))
+      if (errors.nonEmpty)
+        Left(item -> errors.map(errorBody => parser.decode[PlaidError](errorBody.string()).toTry.get))
+      else {
+        val returnedAccounts     =
+          successes.flatMap(_.getAccounts.asScala).distinctBy(_.getAccountId).map(mkAccountInfo(item, _))
+        val returnedTransactions = successes.flatMap(_.getTransactions.asScala).map(mkTransaction)
+        val returnedTxIds        = returnedTransactions.map(_.transactionId).toSet
+        val returnedAccIds       = returnedAccounts.map(_.id).toSet
+        val transactions         =
+          returnedTransactions ++
+            cachedTransactions.filterNot(tx => returnedTxIds.contains(tx.transactionId))
+        val cachedAccounts       = if (accountsRepo.exists) accountsRepo() else Nil
+        val accounts             =
+          returnedAccounts ++ cachedAccounts.filterNot(acc => returnedAccIds.contains(acc.id))
+        accountsRepo() = accounts
+        transactionsRepo() = transactions
+        Right((accounts, transactions))
+      }
+    }
+
+    val data =
+      for (item <- itemsRepo())
+        yield transactionsMap.getOrElseUpdate(item, fetch(item))
+
+    val (errors, successes) = data.partitionMap(identity)
+    val (accounts, txs)     = successes.unzip
 
     val result =
       TransactionsInfo(
@@ -141,7 +140,8 @@ trait PlaidServerBase {
             .map(Right(_)),
         startingMaaserBalance = config.knownMaaserBalances.last._2,
         maaserPaymentMatchers = config.maaserPaymentMatchers,
-        nonMaaserIncomeMatchers = config.nonMaaserIncomeMatchers
+        nonMaaserIncomeMatchers = config.nonMaaserIncomeMatchers,
+        errors = errors.toMap.map { case (k, v) => k.institution.institution_id -> v }
       )
         .combineTransfers
 
