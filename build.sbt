@@ -28,7 +28,7 @@ commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::web
 lazy val start = TaskKey[Unit]("start")
 
 val Http4sVersion  = "0.23.0"
-val LogbackVersion = "1.2.3"
+val LogbackVersion = "1.2.5"
 
 val jvm = project
   .dependsOn(shared.jvm)
@@ -36,8 +36,8 @@ val jvm = project
     libraryDependencies ++= Seq(
       "com.lihaoyi"                  %% "cask"                 % "0.7.11",
       "com.lihaoyi"                  %% "scalatags"            % "0.9.4",
-      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.12.3",
-      "com.plaid"                     % "plaid-java"           % "8.3.0",
+      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.12.4",
+      "com.plaid"                     % "plaid-java"           % "8.5.0",
       "org.dizitart"                  % "nitrite"              % "3.4.3"
     ),
     reForkOptions := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),
@@ -73,20 +73,21 @@ val js = project
     Compile / npmDependencies ++= Seq(
       "react"             -> "17.0.2",
       "react-dom"         -> "17.0.2",
-      "@types/react"      -> "17.0.4",
-      "@types/react-dom"  -> "17.0.3",
+      "@types/react"      -> "17.0.15",
+      "@types/react-dom"  -> "17.0.9",
       "csstype"           -> "3.0.8",
-      "@types/prop-types" -> "15.7.3",
-      "antd"              -> "4.15.4"
+      "@types/prop-types" -> "15.7.4",
+      "antd"              -> "4.16.9"
     ),
     webpackConfigFile := Some(baseDirectory.value / "custom.webpack.config.js"),
     Compile / npmDevDependencies ++= Seq(
-      "webpack-merge" -> "4.2.2",
-      "css-loader"    -> "3.4.2",
-      "less-loader"   -> "6.2.0",
-      "style-loader"  -> "1.1.3",
-      "file-loader"   -> "5.1.0",
-      "url-loader"    -> "3.0.0"
+      "webpack-merge" -> "5.8.0",
+      "css-loader"    -> "5.2.7",
+      "less-loader"   -> "7.3.0",
+      "less"          -> "4.1.1",
+      "style-loader"  -> "2.0.0",
+      "file-loader"   -> "6.2.0",
+      "url-loader"    -> "4.1.1"
     ),
     start := {
       (Compile / fastOptJS / startWebpackDevServer).value

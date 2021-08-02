@@ -1,5 +1,6 @@
-// noinspection NpmUsedModulesInstalled
-const merge = require('webpack-merge');
+// noinspection NpmUsedModulesInstalled,JSUnresolvedFunction,JSUnresolvedVariable
+
+const {merge} = require('webpack-merge');
 // noinspection JSFileReferences
 const generated = require('./scalajs.webpack.config');
 
