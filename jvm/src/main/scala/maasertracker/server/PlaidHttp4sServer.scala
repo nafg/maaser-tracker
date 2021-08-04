@@ -3,17 +3,17 @@ package maasertracker.server
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits.{catsSyntaxApplicativeError, toSemigroupKOps}
 import com.plaid.client.request.ItemPublicTokenExchangeRequest
-import io.circe.syntax._
+import io.circe.syntax.*
 import maasertracker.{AddItemRequest, PlaidItem}
 import org.http4s.HttpRoutes
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
 import org.http4s.circe.jsonEncoder
-import org.http4s.dsl.io._
-import org.http4s.implicits._
+import org.http4s.dsl.io.*
+import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.http4s.server.middleware.Logger
-import org.http4s.server.staticcontent._
+import org.http4s.server.staticcontent.*
 import retrofit2.{Call, Callback, Response}
 
 import scala.concurrent.ExecutionContext.global

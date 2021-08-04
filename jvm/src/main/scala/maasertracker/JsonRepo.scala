@@ -1,6 +1,6 @@
 package maasertracker
 
-import io.circe.syntax._
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
 
 import java.nio.file.{Files, Path, Paths}

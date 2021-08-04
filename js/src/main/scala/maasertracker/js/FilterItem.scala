@@ -1,6 +1,6 @@
 package maasertracker.js
 
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import typings.antd.tableInterfaceMod.ColumnFilterItem
 
 import scala.scalajs.js.JSConverters.JSRichIterableOnce

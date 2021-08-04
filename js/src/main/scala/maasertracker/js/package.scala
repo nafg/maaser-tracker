@@ -1,17 +1,19 @@
 package maasertracker
 
-import japgolly.scalajs.react.React
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
+import japgolly.scalajs.react.{React, raw}
 import typings.antd.tableInterfaceMod.ColumnType
+import typings.rcTable.interfaceMod.RenderedCell
 
 import scala.scalajs.js.JSConverters.JSRichIterableOnce
+import scala.scalajs.js.|
 
 package object js {
   def columnType_(key: String, title: String)(render: TransactionsInfo.Item => VdomNode) =
     ColumnType[TransactionsInfo.Item]()
       .setKey(key)
       .setTitle(title)
-      .setRender((_, t, _) => render(t).rawNode)
+      .setRender((_, t, _) => render(t).rawNode.asInstanceOf[raw.React.Node | RenderedCell[TransactionsInfo.Item]])
 
   def columnType(key: String, title: String)(render: Transaction => VdomNode) =
     columnType_(key, title) {

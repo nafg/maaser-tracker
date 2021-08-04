@@ -3,9 +3,9 @@ package maasertracker.js
 import io.circe.Decoder
 import io.circe.syntax.EncoderOps
 import japgolly.scalajs.react.extra.Ajax
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{AsyncCallback, Callback, ScalaComponent}
-import maasertracker._
+import maasertracker.*
 import org.scalajs.dom
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
@@ -179,7 +179,7 @@ object Main {
                 .size(small)
                 .scroll(
                   js.Dynamic.literal(y = "calc(100vh - 240px)")
-                    .asInstanceOf[js.UndefOr[rcTable.anon.X] with ScrollToFirstRowOnChange]
+                    .asInstanceOf[js.UndefOr[rcTable.anon.X] & ScrollToFirstRowOnChange]
                 )
                 .rowClassNameFunction3 {
                   case (Right(tx), _, _) =>

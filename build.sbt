@@ -8,7 +8,7 @@ inThisBuild(
   Seq(
     version := "0.1",
     scalaVersion := "2.13.6",
-    scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint", "-Ymacro-annotations")
+    scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint", "-Ymacro-annotations", "-Xsource:3")
   )
 )
 

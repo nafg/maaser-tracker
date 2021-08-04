@@ -1,6 +1,6 @@
 package maasertracker
 
-import cats.implicits._
+import cats.implicits.*
 import io.circe.Codec
 import io.circe.generic.JsonCodec
 

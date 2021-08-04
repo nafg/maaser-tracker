@@ -1,16 +1,16 @@
 package maasertracker.server
 
 import com.plaid.client.request.{LinkTokenCreateRequest, TransactionsGetRequest}
-import com.plaid.client.response.{TransactionsGetResponse, Account => PlaidAccount}
+import com.plaid.client.response.{TransactionsGetResponse, Account as PlaidAccount}
 import io.circe.parser
-import maasertracker._
+import maasertracker.*
 import retrofit2.Response
 
 import java.time.{Instant, LocalDate, ZoneId}
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.tailrec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 trait PlaidServerBase {
   val transactionsMap =
@@ -108,6 +108,7 @@ trait PlaidServerBase {
           successes.flatMap(_.getAccounts.asScala).distinctBy(_.getAccountId).map(mkAccountInfo(item, _))
         val returnedTransactions = successes.flatMap(_.getTransactions.asScala).map(mkTransaction)
         val returnedTxIds        = returnedTransactions.map(_.transactionId).toSet
+        println(s"Received ${returnedTxIds.size} transactions for ${item.institution.name}")
         val returnedAccIds       = returnedAccounts.map(_.id).toSet
         val transactions         =
           returnedTransactions ++
