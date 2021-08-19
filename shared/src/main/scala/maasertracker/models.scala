@@ -15,7 +15,7 @@ case class PlaidError(error_type: String, error_code: String, error_message: Str
 case class Institution(name: String, institution_id: String)
 
 @JsonCodec
-case class PlaidItem(itemId: String, accessToken: String, institution: Institution)
+case class PlaidItem(itemId: String, institution: Institution)
 
 @JsonCodec
 case class AddItemRequest(publicToken: String, institution: Institution)

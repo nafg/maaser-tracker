@@ -4,7 +4,7 @@ import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits.{catsSyntaxApplicativeError, toSemigroupKOps}
 import com.plaid.client.request.ItemPublicTokenExchangeRequest
 import io.circe.syntax.*
-import maasertracker.{AddItemRequest, PlaidItem}
+import maasertracker.AddItemRequest
 import org.http4s.HttpRoutes
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
@@ -40,24 +40,24 @@ object PlaidHttp4sServer extends IOApp with PlaidServerBase {
       "app" -> resourceServiceBuilder[IO]("public").toRoutes
     )
 
-    object Params {
-      object accessToken extends QueryParamDecoderMatcher[String]("accessToken")
+    object IdOfItem {
+      def unapply(itemId: String) = itemsRepo().find(_.itemId == itemId)
     }
 
     val routes = HttpRoutes.of[IO] {
-      case GET -> Root / "plaid-link-token.jsonp"                       =>
+      case GET -> Root / "plaid-link-token.jsonp"     =>
         callAsync(createLinkToken(List("auth", "transactions")))
           .flatMap(res => Ok(s"const plaidLinkToken = '${res.getLinkToken}'"))
-      case GET -> Root / "plaid-link-token"                             =>
+      case GET -> Root / "plaid-link-token"           =>
         callAsync(createLinkToken(List("auth", "transactions")))
           .flatMap(res => Ok(res.getLinkToken.asJson))
-      case GET -> Root / "linkToken" :? Params.accessToken(accessToken) =>
-        callAsync(createLinkToken(Nil, _.withAccessToken(accessToken)))
+      case GET -> Root / "linkToken" / IdOfItem(item) =>
+        callAsync(createLinkToken(Nil, _.withAccessToken(item.accessToken)))
           .flatMap(res => Ok(res.getLinkToken.asJson))
           .recoverWith { case ResponseFailed(eb) => BadRequest(eb.toString) }
-      case GET -> Root / "items"                                        =>
-        IO.blocking(itemsRepo()).flatMap(items => Ok(items.asJson))
-      case req @ POST -> Root / "items"                                 =>
+      case GET -> Root / "items"                      =>
+        IO.blocking(itemsRepo()).flatMap(items => Ok(items.map(_.toShared).asJson))
+      case req @ POST -> Root / "items"               =>
         for {
           addItemRequest <- req.as[AddItemRequest]
           itemPublicTokenExchangeRequest = new ItemPublicTokenExchangeRequest(addItemRequest.publicToken)
@@ -78,7 +78,7 @@ object PlaidHttp4sServer extends IOApp with PlaidServerBase {
               }
               .handleErrorWith(t => InternalServerError(t.getLocalizedMessage))
         } yield res
-      case GET -> Root / "transactions"                                 =>
+      case GET -> Root / "transactions"               =>
         IO.blocking(transactionsInfo).flatMap(transactionsInfo => Ok(transactionsInfo.asJson))
     }
 

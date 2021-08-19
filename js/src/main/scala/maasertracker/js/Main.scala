@@ -96,7 +96,7 @@ object Main {
                     val button      =
                       Button("Update" + (if (maybeErrors.exists(_.nonEmpty)) " (!)" else ""))
                         .onClick { _ =>
-                          ajax[String]("/api/linkToken?accessToken=" + item.accessToken)
+                          ajax[String]("/api/linkToken/" + item.itemId)
                             .flatMapSync(token => Callback(makePlaid(token)((_, _) => Callback.empty).open()))
                             .toCallback
                         }

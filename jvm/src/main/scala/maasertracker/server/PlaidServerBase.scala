@@ -3,7 +3,7 @@ package maasertracker.server
 import com.plaid.client.request.{LinkTokenCreateRequest, TransactionsGetRequest}
 import com.plaid.client.response.{TransactionsGetResponse, Account as PlaidAccount}
 import io.circe.parser
-import maasertracker.*
+import maasertracker.{PlaidItem as _, _}
 import retrofit2.Response
 
 import java.time.{Instant, LocalDate, ZoneId}
