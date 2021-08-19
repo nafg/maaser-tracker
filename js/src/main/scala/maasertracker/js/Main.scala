@@ -9,7 +9,7 @@ import maasertracker.*
 import org.scalajs.dom
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
-import typings.antd.components.{Transfer => _, _}
+import typings.antd.components.{Transfer as _, _}
 import typings.antd.formFormMod.FormLayout
 import typings.antd.tooltipMod.TooltipPropsWithTitle
 import typings.antd.{antdBooleans, antdStrings}
