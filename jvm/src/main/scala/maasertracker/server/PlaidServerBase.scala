@@ -49,23 +49,14 @@ trait PlaidServerBase {
     val startDate = config.knownMaaserBalances.lastKey
 
     def fetch(item: PlaidItem): Either[(PlaidItem, Seq[PlaidError]), (Seq[AccountInfo], Seq[Transaction])] = {
-      val accountsRepo                              =
-        new JsonRepo[Iterable[AccountInfo]](s"${item.institution.institution_id}/accounts")
-      val transactionsRepo                          =
-        new JsonRepo[Iterable[Transaction]](s"${item.institution.institution_id}/transactions")
-      val cachedTransactions: Iterable[Transaction] =
-        if (transactionsRepo.exists)
-          transactionsRepo()
-        else
-          Nil
-      val latestCached                              = cachedTransactions.map(_.date).maxOption
-      val now                                       = Instant.now()
-      val start                                     =
-        latestCached.getOrElse(LocalDate.of(2000, 1, 1))
-          .minusDays(14)
+      println("Getting transactions for " + item + " since " + startDate)
+
+      val now = Instant.now()
+
+      val start =
+        startDate
           .atStartOfDay(ZoneId.systemDefault())
           .toInstant
-      println("Getting transactions for " + item + " since " + start)
 
       def getTransactions: Seq[Response[TransactionsGetResponse]] = {
         val pageSize               = 500
@@ -97,20 +88,10 @@ trait PlaidServerBase {
       if (errors.nonEmpty)
         Left(item -> errors.map(errorBody => parser.decode[PlaidError](errorBody.string()).toTry.get))
       else {
-        val returnedAccounts     =
-          successes.flatMap(_.getAccounts.asScala).distinctBy(_.getAccountId).map(mkAccountInfo(item, _))
-        val returnedTransactions = successes.flatMap(_.getTransactions.asScala).map(mkTransaction)
-        val returnedTxIds        = returnedTransactions.map(_.transactionId).toSet
+        val accounts = successes.flatMap(_.getAccounts.asScala).distinctBy(_.getAccountId).map(mkAccountInfo(item, _))
+        val transactions  = successes.flatMap(_.getTransactions.asScala).map(mkTransaction)
+        val returnedTxIds = transactions.map(_.transactionId).toSet
         println(s"Received ${returnedTxIds.size} transactions for ${item.institution.name}")
-        val returnedAccIds       = returnedAccounts.map(_.id).toSet
-        val transactions         =
-          returnedTransactions ++
-            cachedTransactions.filterNot(tx => returnedTxIds.contains(tx.transactionId))
-        val cachedAccounts       = if (accountsRepo.exists) accountsRepo() else Nil
-        val accounts             =
-          returnedAccounts ++ cachedAccounts.filterNot(acc => returnedAccIds.contains(acc.id))
-        accountsRepo() = accounts
-        transactionsRepo() = transactions
         Right((accounts, transactions))
       }
     }
