@@ -6,7 +6,7 @@ name := "maaser"
 
 inThisBuild(
   Seq(
-    version := "0.1",
+    version      := "0.1",
     scalaVersion := "2.13.6",
     scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint", "-Ymacro-annotations", "-Xsource:3")
   )
@@ -40,8 +40,8 @@ val jvm = project
       "com.plaid"                     % "plaid-java"           % "8.5.0",
       "org.dizitart"                  % "nitrite"              % "3.4.3"
     ),
-    reForkOptions := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),
-    start := Def.taskDyn {
+    reForkOptions       := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),
+    start               := Def.taskDyn {
       val re       = reStart.toTask("").taskValue
       val modified = (Compile / compileIncremental).value.hasModified
       if (modified) Def.task(re.value).map(_ => ()) else Def.task(())
@@ -61,10 +61,10 @@ val jvm = project
 val js = project
   .enablePlugins(ScalablyTypedConverterPlugin).dependsOn(shared.js)
   .settings(
-    stFlavour := Flavour.Japgolly,
-    useYarn := true,
+    stFlavour                       := Flavour.Japgolly,
+    useYarn                         := true,
     autoImport.webpackDevServerPort := 8081,
-    scalaJSLinkerConfig := scalaJSLinkerConfig.value.withSourceMap(false),
+    scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
       "com.github.japgolly.scalajs-react" %%% "extra"           % "1.7.7",
@@ -79,7 +79,7 @@ val js = project
       "@types/prop-types" -> "15.7.4",
       "antd"              -> "4.16.9"
     ),
-    webpackConfigFile := Some(baseDirectory.value / "custom.webpack.config.js"),
+    webpackConfigFile               := Some(baseDirectory.value / "custom.webpack.config.js"),
     Compile / npmDevDependencies ++= Seq(
       "webpack-merge" -> "5.8.0",
       "css-loader"    -> "5.2.7",
@@ -89,7 +89,7 @@ val js = project
       "file-loader"   -> "6.2.0",
       "url-loader"    -> "4.1.1"
     ),
-    start := {
+    start                           := {
       (Compile / fastOptJS / startWebpackDevServer).value
       Desktop.getDesktop.browse(uri(s"http://localhost:${webpackDevServerPort.value}"))
     },
