@@ -8,17 +8,10 @@ import retrofit2.Response
 
 import java.time.{Instant, LocalDate, ZoneId}
 import java.util.Date
-import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 
 trait PlaidServerBase {
-  val transactionsMap =
-    new ConcurrentHashMap[
-      PlaidItem,
-      Either[(PlaidItem, Seq[PlaidError]), (Iterable[AccountInfo], Iterable[Transaction])]
-    ]().asScala
-
   def createLinkToken(products: Seq[String], mod: LinkTokenCreateRequest => LinkTokenCreateRequest = identity) =
     plaidService.linkTokenCreate(
       mod(
@@ -124,7 +117,7 @@ trait PlaidServerBase {
 
     val data =
       for (item <- itemsRepo())
-        yield transactionsMap.getOrElseUpdate(item, fetch(item))
+        yield fetch(item)
 
     val (errors, successes) = data.partitionMap(identity)
     val (accounts, txs)     = successes.unzip
