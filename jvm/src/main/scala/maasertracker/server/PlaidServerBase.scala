@@ -116,7 +116,7 @@ trait PlaidServerBase {
         startingMaaserBalance = config.knownMaaserBalances.last._2,
         maaserPaymentMatchers = config.maaserPaymentMatchers,
         nonMaaserIncomeMatchers = config.nonMaaserIncomeMatchers,
-        errors = errors.toMap.map { case (k, v) => k.institution.institution_id -> v }
+        errors = errors.toMap.map { case (k, v) => k.itemId -> v }
       )
         .combineTransfers
 

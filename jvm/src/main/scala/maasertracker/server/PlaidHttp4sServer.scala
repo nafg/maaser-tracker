@@ -65,7 +65,14 @@ object PlaidHttp4sServer extends IOApp with PlaidServerBase {
             callAsync(plaidService.itemPublicTokenExchange(itemPublicTokenExchangeRequest))
               .flatMap { plaidResponse =>
                 IO.blocking(
-                  itemsRepo.modify(_ :+ PlaidItem(plaidResponse.getAccessToken, addItemRequest.institution))
+                  itemsRepo.modify { items =>
+                    items :+
+                      PlaidItem(
+                        itemId = plaidResponse.getItemId,
+                        accessToken = plaidResponse.getAccessToken,
+                        institution = addItemRequest.institution
+                      )
+                  }
                 ) *>
                   Ok()
               }

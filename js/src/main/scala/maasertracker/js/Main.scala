@@ -92,7 +92,7 @@ object Main {
               Form().layout(FormLayout.vertical)(
                 Row.gutter(16).style(CSSProperties().setMarginBottom(16))(
                   state.items.toTagMod { item =>
-                    val maybeErrors = state.info.errors.get(item.institution.institution_id)
+                    val maybeErrors = state.info.errors.get(item.itemId)
                     val button      =
                       Button("Update" + (if (maybeErrors.exists(_.nonEmpty)) " (!)" else ""))
                         .onClick { _ =>
