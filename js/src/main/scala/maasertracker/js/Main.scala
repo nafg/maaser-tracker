@@ -4,13 +4,13 @@ import io.circe.Decoder
 import io.circe.syntax.EncoderOps
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{AsyncCallback, Callback, ScalaComponent}
+import japgolly.scalajs.react.{AsyncCallback, Callback, CallbackTo, ScalaComponent}
 import maasertracker.*
 import org.scalajs.dom
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
+import typings.antd.cardMod.CardSize
 import typings.antd.components.{Transfer as _, _}
-import typings.antd.formFormMod.FormLayout
 import typings.antd.tooltipMod.TooltipPropsWithTitle
 import typings.antd.{antdBooleans, antdStrings}
 import typings.rcTable
@@ -77,150 +77,179 @@ object Main {
     )
   }
 
+  private def loadData(modState: (State => State) => Callback) =
+    ajax[TransactionsInfo]("/api/transactions")
+      .zip(ajax[Seq[PlaidItem]]("/api/items"))
+      .flatMapSync { case (info, items) =>
+        modState { state =>
+          val categories =
+            info
+              .transactions
+              .flatMap {
+                case Right(tx)                => Seq(tx.category)
+                case Left(Transfer(tx1, tx2)) => Seq(tx1.category, tx2.category)
+              }
+              .to(SortedSet)
+          state.copy(
+            info = info,
+            items = items,
+            categories = categories.toSeq,
+            loading = false
+          )
+        }
+      }
+      .handleErrorSync(t => modState(_.copy(loading = false, error = Some(t.toString))))
+      .toCallback
+
   val component =
     ScalaComponent
       .builder[Unit]
       .initialState(State())
       .render { self =>
-        val state = self.state
-
+        val state          = self.state
+        val removeItemMenu =
+          Menu(state.items.toTagMod(item => Menu.Item.withKey(item.itemId)(<.a(item.institution.name))))
+            .onClick { menuInfo =>
+              Callback.traverseOption(state.items.find(_.itemId == menuInfo.key)) { item =>
+                CallbackTo.confirm("Really remove " + item.institution.name + "?")
+                  .flatMap {
+                    case false => Callback.empty
+                    case true  =>
+                      Ajax("DELETE", s"/api/items/${item.itemId}").send.asAsyncCallback
+                        .flatMapSync(_ => loadData(self.modState))
+                        .toCallback
+                  }
+              }
+            }
         Layout.style(CSSProperties().setPadding("24px 24px"))(
           Layout.Content(
             <.div(
               <.div("Loading...").when(state.loading),
               state.error.map(e => <.div("ERROR: " + e)),
-              Form().layout(FormLayout.vertical)(
-                Row.gutter(16).style(CSSProperties().setMarginBottom(16))(
-                  state.items.toTagMod { item =>
-                    val maybeErrors = state.info.errors.get(item.itemId)
-                    val button      =
-                      Button("Update" + (if (maybeErrors.exists(_.nonEmpty)) " (!)" else ""))
-                        .onClick { _ =>
-                          ajax[String]("/api/linkToken/" + item.itemId)
-                            .flatMapSync(token => Callback(makePlaid(token)((_, _) => Callback.empty).open()))
-                            .toCallback
-                        }
-                    Col(
-                      Text(item.institution.name + " "),
-                      maybeErrors match {
-                        case None         => button
-                        case Some(errors) =>
-                          button
-                            .title(errors.map(_.error_message).mkString("\n"))
-                      }
-                    )
-                  },
-                  Button
-                    .`type`(antdStrings.primary)("Link new item")
-                    .onClick { _ =>
-                      ajax[String]("/api/plaid-link-token").flatMapSync { plaidLinkToken =>
-                        Callback {
-                          makePlaid(plaidLinkToken) { (publicToken, metadata) =>
-                            Ajax
-                              .post("/api/items")
-                              .send(
-                                AddItemRequest(
-                                  publicToken,
-                                  io.circe.scalajs.decodeJs[Institution](metadata.institution).toTry.get
-                                )
-                                  .asJson
-                                  .spaces4
+              Space.direction(antdStrings.vertical)(
+                Row(
+                  Col.flex(antdStrings.auto)(
+                    Card.size(CardSize.small)(
+                      Space(
+                        Button
+                          .`type`(antdStrings.primary)("Add bank")
+                          .onClick { _ =>
+                            ajax[String]("/api/plaid-link-token").flatMapSync { plaidLinkToken =>
+                              def doAdd(publicToken: String, institution: Institution) =
+                                Ajax
+                                  .post("/api/items")
+                                  .send(AddItemRequest(publicToken, institution).asJson.spaces4)
+                                  .asAsyncCallback
+                                  .flatMapSync(_ => loadData(self.modState))
+
+                              Callback {
+                                makePlaid(plaidLinkToken) { (publicToken, metadata) =>
+                                  doAdd(
+                                    publicToken,
+                                    io.circe.scalajs.decodeJs[Institution](metadata.institution).toTry.get
+                                  )
+                                    .toCallback
+                                }
+                                  .open()
+                              }
+                            }.toCallback
+                          },
+                        <.div(
+                          state.items
+                            .flatMap(item => state.info.errors.get(item.itemId).map(item -> _))
+                            .toTagMod { case (item, errors) =>
+                              Button("Fix " + item.institution.name)
+                                .title(errors.map(_.error_message).mkString("\n"))
+                                .onClick { _ =>
+                                  ajax[String]("/api/linkToken/" + item.itemId)
+                                    .flatMapSync { token =>
+                                      Callback {
+                                        makePlaid(token)((_, _) => loadData(self.modState))
+                                          .open()
+                                      }
+                                    }
+                                    .toCallback
+                                }
+                            }
+                        ),
+                        Dropdown(removeItemMenu.rawElement)
+                          .triggerVarargs(antdStrings.click)(
+                            Button.danger(true)(
+                              Space(
+                                "Remove",
+                                <.i(^.cls := "fa fa-angle-down")
                               )
-                              .asCallback
-                          }
-                            .open()
+                            )
+                          )
+                      )
+                    )
+                  )
+                ),
+                Table[TransactionsInfo.Item]()
+                  .pagination(antdBooleans.`false`)
+                  .dataSource(state.info.transactions.reverse.toJSArray)
+                  .columnsVarargs(
+                    columnType("date", "Date") { tx =>
+                      Tooltip(TooltipPropsWithTitle().setTitle(tx.transactionId).setChildren(
+                        tx.date.toString
+                      ).combineWith(RefAttributes()))
+                    },
+                    columnType("account", "Account")(t => accountLabel(state.info.accounts(t.accountId)))
+                      .filtering(_.accountId)()(
+                        state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
+                          FilterItem(
+                            institution.institution_id,
+                            institution.name,
+                            accounts.values
+                              .toSeq
+                              .sortBy(_.account.name)
+                              .map(info => FilterItem(info.id, s"${info.account.name} (${info.account.subtype})"))
+                          )
                         }
-                      }.toCallback
+                      ),
+                    columnType("name", "Name")(_.name),
+                    columnType("category", "Category")(_.category.mkString(" > "))
+                      .filtering(_.category)(_.asJson.noSpaces)(
+                        state.categories.toJSArray.map { category =>
+                          FilterItem(category, if (category.isEmpty) "None" else category.mkString(" > "))
+                        }
+                      ),
+                    columnType("transactionType", "Type")(_.transactionType),
+                    columnType_("amount", "Amount") { t =>
+                      val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
+                      f"$$$amount%,.2f"
+                    },
+                    columnTypeTx("tag", "Tag")(t => state.info.tags.get(t.transactionId).mkString)
+                      .filtering(t => state.info.tags.get(t.transactionId))(_.fold("")(_.toString))(
+                        Tags.values.toList.map(tag => FilterItem(Some(tag), tag.toString))
+                      ),
+                    columnTypeTx("maaserBalance", "Maaser balance") { t =>
+                      f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"
                     }
-                )
-              ),
-              Table[TransactionsInfo.Item]()
-                .pagination(antdBooleans.`false`)
-                .dataSource(state.info.transactions.reverse.toJSArray)
-                .columnsVarargs(
-                  columnType("date", "Date") { tx =>
-                    Tooltip(TooltipPropsWithTitle().setTitle(tx.transactionId).setChildren(
-                      tx.date.toString
-                    ).combineWith(RefAttributes()))
-                  },
-                  columnType("account", "Account")(t => accountLabel(state.info.accounts(t.accountId)))
-                    .filtering(_.accountId)()(
-                      state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
-                        FilterItem(
-                          institution.institution_id,
-                          institution.name,
-                          accounts.values
-                            .toSeq
-                            .sortBy(_.account.name)
-                            .map(info => FilterItem(info.id, s"${info.account.name} (${info.account.subtype})"))
-                        )
+                  )
+                  .size(small)
+                  .scroll(
+                    js.Dynamic.literal(y = "calc(100vh - 240px)")
+                      .asInstanceOf[js.UndefOr[rcTable.anon.X] & ScrollToFirstRowOnChange]
+                  )
+                  .rowClassNameFunction3 {
+                    case (Right(tx), _, _) =>
+                      state.info.tags.get(tx.transactionId) match {
+                        case None      => ""
+                        case Some(tag) => "tag-" + tag.toString
                       }
-                    ),
-                  columnType("name", "Name")(_.name),
-                  columnType("category", "Category")(_.category.mkString(" > "))
-                    .filtering(_.category)(_.asJson.noSpaces)(
-                      state.categories.toJSArray.map { category =>
-                        FilterItem(category, if (category.isEmpty) "None" else category.mkString(" > "))
-                      }
-                    ),
-                  columnType("transactionType", "Type")(_.transactionType),
-                  columnType_("amount", "Amount") { t =>
-                    val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
-                    f"$$$amount%,.2f"
-                  },
-                  columnTypeTx("tag", "Tag")(t => state.info.tags.get(t.transactionId).mkString)
-                    .filtering(t => state.info.tags.get(t.transactionId))(_.fold("")(_.toString))(
-                      Tags.values.toList.map(tag => FilterItem(Some(tag), tag.toString))
-                    ),
-                  columnTypeTx("maaserBalance", "Maaser balance") { t =>
-                    f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"
+                    case _                 => ""
                   }
-                )
-                .size(small)
-                .scroll(
-                  js.Dynamic.literal(y = "calc(100vh - 240px)")
-                    .asInstanceOf[js.UndefOr[rcTable.anon.X] & ScrollToFirstRowOnChange]
-                )
-                .rowClassNameFunction3 {
-                  case (Right(tx), _, _) =>
-                    state.info.tags.get(tx.transactionId) match {
-                      case None      => ""
-                      case Some(tag) => "tag-" + tag.toString
-                    }
-                  case _                 => ""
-                }
-                .rowKeyFunction2 {
-                  case (Right(tx), _)                => tx.transactionId
-                  case (Left(Transfer(tx1, tx2)), _) => tx1.transactionId + "->" + tx2.transactionId
-                }
+                  .rowKeyFunction2 {
+                    case (Right(tx), _)                => tx.transactionId
+                    case (Left(Transfer(tx1, tx2)), _) => tx1.transactionId + "->" + tx2.transactionId
+                  }
+              )
             )
           )
         )
       }
-      .componentDidMount { self =>
-        ajax[TransactionsInfo]("/api/transactions")
-          .zip(ajax[Seq[PlaidItem]]("/api/items"))
-          .flatMapSync { case (info, items) =>
-            self.modState { state =>
-              val categories =
-                info
-                  .transactions
-                  .flatMap {
-                    case Right(tx)                => Seq(tx.category)
-                    case Left(Transfer(tx1, tx2)) => Seq(tx1.category, tx2.category)
-                  }
-                  .to(SortedSet)
-              state.copy(
-                info = info,
-                items = items,
-                categories = categories.toSeq,
-                loading = false
-              )
-            }
-          }
-          .handleErrorSync(t => self.modState(_.copy(loading = false, error = Some(t.toString))))
-          .toCallback
-      }
+      .componentDidMount(self => loadData(self.modState))
       .build
 
   def main(args: Array[String]): Unit = component().renderIntoDOM(dom.document.getElementById("container"))

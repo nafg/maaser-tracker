@@ -2,6 +2,7 @@ package maasertracker.server
 
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.implicits.{catsSyntaxApplicativeError, toSemigroupKOps}
+import com.plaid.client.request.ItemRemoveRequest
 import io.circe.syntax.*
 import maasertracker.AddItemRequest
 import org.http4s.blaze.server.BlazeServerBuilder
@@ -49,6 +50,11 @@ object PlaidHttp4sServer extends IOApp {
         }
       case GET -> Root / "items"                  =>
         itemsRepo.load.flatMap(items => Ok(items.map(_.toShared).asJson))
+      case DELETE -> Root / "items" / itemId      =>
+        withItem(itemId) { item =>
+          callAsync(plaidService.plaidApiService.itemRemove(new ItemRemoveRequest(item.accessToken))) >>
+            itemsRepo.modify(_.filterNot(_.itemId == itemId)) *> Ok()
+        }
       case req @ POST -> Root / "items"           =>
         (for {
           addItemRequest <- req.as[AddItemRequest]

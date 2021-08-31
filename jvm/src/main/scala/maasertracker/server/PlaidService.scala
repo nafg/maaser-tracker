@@ -13,7 +13,7 @@ import java.time.{Instant, LocalDate, ZoneId}
 import java.util.Date
 import scala.jdk.CollectionConverters.*
 
-final class PlaidService(plaidApiService: PlaidApiService) {
+final class PlaidService(val plaidApiService: PlaidApiService) {
   def createLinkToken(products: Seq[String], mod: LinkTokenCreateRequest => LinkTokenCreateRequest = identity) =
     plaidApiService.linkTokenCreate(
       mod(
