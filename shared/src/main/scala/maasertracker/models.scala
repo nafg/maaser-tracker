@@ -43,7 +43,7 @@ object Tags extends Enumeration {
 case class Transfer(withdrawal: Transaction, deposit: Transaction)
 
 @JsonCodec
-case class TransactionMatcher(institution: Option[String], description: Option[String])
+case class TransactionMatcher(institution: Option[String], description: Option[String], id: Option[String])
 
 @JsonCodec
 case class TransactionsInfo(accounts: Map[String, AccountInfo],
@@ -98,7 +98,8 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
   }
 
   def matches(tx: Transaction, matcher: TransactionMatcher) =
-    matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
+    matcher.id.forall(_ == tx.transactionId) &&
+      matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
       matcher.description.forall(_ == tx.name)
 
   private def isIncome(tx: Transaction) =
