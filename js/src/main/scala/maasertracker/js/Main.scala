@@ -5,17 +5,22 @@ import io.circe.syntax.EncoderOps
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{AsyncCallback, Callback, CallbackTo, ScalaComponent}
+import kantan.csv.*
+import kantan.csv.ops.*
 import maasertracker.*
 import org.scalajs.dom
+import org.scalajs.dom.raw.HTMLAnchorElement
+import org.scalajs.dom.{Blob, BlobPropertyBag, URL}
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
 import typings.antd.cardMod.CardSize
-import typings.antd.components.{Transfer as _, _}
+import typings.antd.components.{List as _, Transfer as _, _}
 import typings.antd.tooltipMod.TooltipPropsWithTitle
 import typings.antd.{antdBooleans, antdStrings}
 import typings.rcTable
 import typings.react.mod.{CSSProperties, RefAttributes}
 
+import java.io.StringWriter
 import scala.collection.immutable.SortedSet
 import scala.concurrent.Future
 import scala.math.Ordering.Implicits.seqOrdering
@@ -107,8 +112,9 @@ object Main {
       .initialState(State())
       .render { self =>
         val state          = self.state
+        val itemMenuItems  = state.items.toTagMod(item => Menu.Item.withKey(item.itemId)(<.a(item.institution.name)))
         val removeItemMenu =
-          Menu(state.items.toTagMod(item => Menu.Item.withKey(item.itemId)(<.a(item.institution.name))))
+          Menu(itemMenuItems)
             .onClick { menuInfo =>
               Callback.traverseOption(state.items.find(_.itemId == menuInfo.key)) { item =>
                 CallbackTo.confirm("Really remove " + item.institution.name + "?")
@@ -121,6 +127,57 @@ object Main {
                   }
               }
             }
+
+        val downloadItemMenu =
+          Menu(state.items.toTagMod(item => Menu.Item.withKey(item.itemId)(<.a(item.institution.name))))
+            .onClick { menuInfo =>
+              Callback.traverseOption(state.items.find(_.itemId == menuInfo.key)) { item =>
+                Callback {
+                  val transactions                                       =
+                    state.info.transactions.flatMap(_.fold(_.toSeq, Seq(_)))
+                      .filter { tx =>
+                        state.info.accounts(tx.accountId).institution.institution_id == item.institution.institution_id
+                      }
+                      .sortBy(_.date)
+                  val sw                                                 = new StringWriter()
+                  implicit val headerEncoder: HeaderEncoder[Transaction] = new HeaderEncoder[Transaction] {
+                    override val header =
+                      Some(
+                        List(
+                          "Account ID",
+                          "Date",
+                          "Transaction ID",
+                          "Description",
+                          "Amount",
+                          "Debit or Credit",
+                          "Category",
+                          "Type"
+                        )
+                      )
+
+                    override val rowEncoder: RowEncoder[Transaction] = { (d: Transaction) =>
+                      List(
+                        d.accountId,
+                        d.date.toString,
+                        d.transactionId,
+                        d.name,
+                        d.amount.abs.toString,
+                        if (d.amount > 0) "debit" else "credit",
+                        d.category.mkString(" / "),
+                        d.transactionType
+                      )
+                    }
+                  }
+                  sw.writeCsv(transactions, rfc.withHeader)
+                  val a = dom.window.document.createElement("a").asInstanceOf[HTMLAnchorElement]
+                  a.href =
+                    URL.createObjectURL(new Blob(js.Array(sw.toString), BlobPropertyBag("text/csv;charset=utf-8")))
+                  a.setAttribute("download", item.institution.name + ".csv")
+                  a.click()
+                }
+              }
+            }
+
         Layout.style(CSSProperties().setPadding("24px 24px"))(
           Layout.Content(
             <.div(
@@ -177,6 +234,15 @@ object Main {
                             Button.danger(true)(
                               Space(
                                 "Remove",
+                                <.i(^.cls := "fa fa-angle-down")
+                              )
+                            )
+                          ),
+                        Dropdown(downloadItemMenu.rawElement)
+                          .triggerVarargs(antdStrings.click)(
+                            Button(
+                              Space(
+                                "Download",
                                 <.i(^.cls := "fa fa-angle-down")
                               )
                             )

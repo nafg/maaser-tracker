@@ -40,7 +40,9 @@ object Tags extends Enumeration {
 }
 
 @JsonCodec
-case class Transfer(withdrawal: Transaction, deposit: Transaction)
+case class Transfer(withdrawal: Transaction, deposit: Transaction) {
+  def toSeq = Seq(withdrawal, deposit)
+}
 
 @JsonCodec
 case class TransactionMatcher(institution: Option[String], description: Option[String], id: Option[String])

@@ -68,7 +68,8 @@ val js = project
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
       "com.github.japgolly.scalajs-react" %%% "extra"           % "1.7.7",
-      "io.github.cquiroz"                 %%% "scala-java-time" % "2.3.0"
+      "io.github.cquiroz"                 %%% "scala-java-time" % "2.3.0",
+      "com.nrinaudo"                      %%% "kantan.csv"      % "0.6.1"
     ),
     Compile / npmDependencies ++= Seq(
       "react"             -> "17.0.2",
