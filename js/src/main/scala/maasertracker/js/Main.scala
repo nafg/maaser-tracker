@@ -35,7 +35,7 @@ object Main {
   val CSS: js.Object = js.native
   locally(CSS)
 
-  case class State(info: TransactionsInfo = TransactionsInfo(Map.empty, Seq.empty, 0, Nil, Nil, Map.empty),
+  case class State(info: TransactionsInfo = TransactionsInfo(Map.empty, Seq.empty, 0, Nil, Nil, Nil, Map.empty),
                    items: Seq[PlaidItem] = Nil,
                    categories: Seq[List[String]] = Nil,
                    loading: Boolean = true,

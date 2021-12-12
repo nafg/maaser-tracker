@@ -127,6 +127,7 @@ final class PlaidService(val plaidApiService: PlaidApiService) {
           startingMaaserBalance = config.knownMaaserBalances.last._2,
           maaserPaymentMatchers = config.maaserPaymentMatchers,
           nonMaaserIncomeMatchers = config.nonMaaserIncomeMatchers,
+          transferMatchers = config.transferMatchers,
           errors = errors.toMap.map { case (k, v) => k.itemId -> v }
         )
           .combineTransfers

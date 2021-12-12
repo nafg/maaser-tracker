@@ -13,7 +13,8 @@ case class Config(clientId: String,
                   clientSecret: String,
                   knownMaaserBalances: SortedMap[LocalDate, Double],
                   maaserPaymentMatchers: Seq[TransactionMatcher],
-                  nonMaaserIncomeMatchers: Seq[TransactionMatcher])
+                  nonMaaserIncomeMatchers: Seq[TransactionMatcher],
+                  transferMatchers: Seq[TransactionMatcher])
 
 object Config {
   implicit def localDateKeyEncoder: KeyEncoder[LocalDate] = KeyEncoder.instance(_.toString)

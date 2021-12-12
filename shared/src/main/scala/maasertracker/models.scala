@@ -53,16 +53,15 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
                             startingMaaserBalance: Double,
                             maaserPaymentMatchers: Seq[TransactionMatcher],
                             nonMaaserIncomeMatchers: Seq[TransactionMatcher],
+                            transferMatchers: Seq[TransactionMatcher],
                             errors: Map[String, Seq[PlaidError]]) {
-  def combineTransfers = {
-    val transferCategories =
-      Set(
-        List("Transfer", "Credit"),
-        List("Transfer", "Debit"),
-        List("Transfer", "Third Party", "PayPal")
-      )
+  def matches(tx: Transaction, matcher: TransactionMatcher) =
+    matcher.id.forall(_ == tx.transactionId) &&
+      matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
+      matcher.description.forall(_ == tx.name)
 
-    def canBeTransfer(tx: Transaction) = transferCategories.contains(tx.category)
+  def combineTransfers = {
+    def canBeTransfer(tx: Transaction) = transferMatchers.exists(matches(tx, _))
 
     def isTransferPair(a: Transaction, b: Transaction) =
       canBeTransfer(a) && canBeTransfer(b) &&
@@ -98,11 +97,6 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
     val removed = loop(transactions.toList)
     copy(transactions = removed)
   }
-
-  def matches(tx: Transaction, matcher: TransactionMatcher) =
-    matcher.id.forall(_ == tx.transactionId) &&
-      matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
-      matcher.description.forall(_ == tx.name)
 
   private def isIncome(tx: Transaction) =
     !nonMaaserIncomeMatchers.exists(matches(tx, _)) &&
