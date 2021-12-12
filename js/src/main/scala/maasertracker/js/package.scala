@@ -1,10 +1,14 @@
 package maasertracker
 
+import io.circe.Decoder
+import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{React, raw}
+import japgolly.scalajs.react.{AsyncCallback, React, raw}
 import typings.antd.tableInterfaceMod.ColumnType
 import typings.rcTable.interfaceMod.RenderedCell
 
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js.JSConverters.JSRichIterableOnce
 import scala.scalajs.js.|
 
@@ -49,4 +53,12 @@ package object js {
           )
         }
   }
+
+  def ajax[A: Decoder](endpoint: String) =
+    Ajax
+      .get(endpoint)
+      .send
+      .asAsyncCallback
+      .map(xhr => io.circe.parser.decode[A](xhr.responseText))
+      .flatMap(result => AsyncCallback.fromFuture(Future.fromTry(result.toTry)))
 }
