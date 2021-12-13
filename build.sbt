@@ -12,8 +12,6 @@ inThisBuild(
   )
 )
 
-libraryDependencies += "com.nrinaudo" %% "kantan.csv-java8" % "0.6.1"
-
 val CirceVersion = "0.14.1"
 
 val shared = crossProject(JVMPlatform, JSPlatform)
@@ -34,11 +32,7 @@ val jvm = project
   .dependsOn(shared.jvm)
   .settings(
     libraryDependencies ++= Seq(
-      "com.lihaoyi"                  %% "cask"                 % "0.7.11",
-      "com.lihaoyi"                  %% "scalatags"            % "0.9.4",
-      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.12.4",
-      "com.plaid"                     % "plaid-java"           % "8.5.0",
-      "org.dizitart"                  % "nitrite"              % "3.4.3"
+      "com.plaid" % "plaid-java" % "8.5.0"
     ),
     reForkOptions       := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),
     start               := Def.taskDyn {
