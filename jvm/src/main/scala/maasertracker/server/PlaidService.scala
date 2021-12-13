@@ -2,33 +2,33 @@ package maasertracker.server
 
 import cats.effect.IO
 import cats.implicits.toTraverseOps
-import com.plaid.client.PlaidApiService
-import com.plaid.client.request.{ItemPublicTokenExchangeRequest, LinkTokenCreateRequest, TransactionsGetRequest}
-import com.plaid.client.response.{TransactionsGetResponse, Account as PlaidAccount}
+import com.plaid.client.model
+import com.plaid.client.model.*
+import com.plaid.client.request.PlaidApi
 import io.circe.parser
-import maasertracker.{PlaidItem as _, _}
+import maasertracker.{PlaidItem as _, *}
 import retrofit2.Response
 
-import java.time.{Instant, LocalDate, ZoneId}
-import java.util.Date
+import java.time.LocalDate
 import scala.jdk.CollectionConverters.*
 
-final class PlaidService(val plaidApiService: PlaidApiService) {
-  def createLinkToken(products: Seq[String], mod: LinkTokenCreateRequest => LinkTokenCreateRequest = identity) =
-    plaidApiService.linkTokenCreate(
+final class PlaidService(val plaidApi: PlaidApi) {
+  def createLinkToken(products: Seq[Products], mod: LinkTokenCreateRequest => LinkTokenCreateRequest = identity) =
+    plaidApi.linkTokenCreate(
       mod(
-        new LinkTokenCreateRequest(
-          new LinkTokenCreateRequest.User("me"),
-          "Maaser Tracker",
-          products.asJava,
-          List("US").asJava,
-          "en"
-        )
+        new LinkTokenCreateRequest()
+          .user(new LinkTokenCreateRequestUser().clientUserId("me"))
+          .clientName("Maaser Tracker")
+          .products(products.asJava)
+          .countryCodes(List(CountryCode.US).asJava)
+          .language("en")
       )
     )
 
   def addItem(addItemRequest: AddItemRequest): IO[PlaidItem] =
-    callAsync(plaidApiService.itemPublicTokenExchange(new ItemPublicTokenExchangeRequest(addItemRequest.publicToken)))
+    callAsync(
+      plaidApi.itemPublicTokenExchange(new ItemPublicTokenExchangeRequest().publicToken(addItemRequest.publicToken))
+    )
       .map { plaidResponse =>
         PlaidItem(
           itemId = plaidResponse.getItemId,
@@ -37,29 +37,31 @@ final class PlaidService(val plaidApiService: PlaidApiService) {
         )
       }
 
-  private def mkAccountInfo(item: PlaidItem, acct: PlaidAccount) =
+  private def mkAccountInfo(item: PlaidItem, acct: AccountBase) =
     AccountInfo(
       id = acct.getAccountId,
       institution = item.institution,
-      account = Account(acct.getName, acct.getSubtype)
+      account = Account(acct.getName, acct.getSubtype.getValue)
     )
 
-  private def mkTransaction(tx: TransactionsGetResponse.Transaction) =
-    Transaction(
+  private def mkTransaction(tx: model.Transaction) =
+    maasertracker.Transaction(
       accountId = tx.getAccountId,
       transactionId = tx.getTransactionId,
       name = tx.getName,
       amount = tx.getAmount,
-      transactionType = tx.getTransactionType,
+      transactionType = tx.getTransactionType.getValue,
       category = Option(tx.getCategory).map(_.asScala.toList).getOrElse(Nil),
-      date = LocalDate.parse(tx.getDate)
+      date = tx.getDate
     )
 
-  private def getTransactions(item: PlaidItem, start: Instant, end: Instant) = {
+  private def getTransactions(item: PlaidItem, start: LocalDate, end: LocalDate) = {
     val pageSize               = 500
     val transactionsGetRequest =
-      new TransactionsGetRequest(item.accessToken, Date.from(start), Date.from(end))
-        .withCount(pageSize)
+      new TransactionsGetRequest()
+        .accessToken(item.accessToken)
+        .startDate(start)
+        .endDate(end)
 
     def loop(responses: Seq[Response[TransactionsGetResponse]]): IO[Seq[Response[TransactionsGetResponse]]] = {
       lazy val totalSoFar = responses.map(_.body.getTransactions.size()).sum
@@ -67,9 +69,14 @@ final class PlaidService(val plaidApiService: PlaidApiService) {
       def hasMore = totalSoFar < responses.lastOption.fold(Int.MaxValue)(_.body().getTotalTransactions)
 
       if (responses.forall(_.isSuccessful) && hasMore) {
-        val request = transactionsGetRequest.withOffset(totalSoFar)
-        println(s"withOffset($totalSoFar)")
-        asyncResponse(plaidApiService.transactionsGet(request))
+        val request =
+          transactionsGetRequest.options(
+            new TransactionsGetRequestOptions()
+              .count(pageSize)
+              .offset(totalSoFar)
+          )
+        println(s"Offset: $totalSoFar")
+        asyncResponse(plaidApi.transactionsGet(request))
           .flatMap { response =>
             loop(responses :+ response)
           }
@@ -83,17 +90,13 @@ final class PlaidService(val plaidApiService: PlaidApiService) {
   def transactionsInfo(config: Config, items: List[PlaidItem]) = {
     val startDate = config.knownMaaserBalances.lastKey
 
-    def fetch(item: PlaidItem): IO[Either[(PlaidItem, Seq[PlaidError]), (Seq[AccountInfo], Seq[Transaction])]] = {
+    def fetch(item: PlaidItem)
+        : IO[Either[(PlaidItem, Seq[PlaidError]), (Seq[AccountInfo], Seq[maasertracker.Transaction])]] = {
       println("Getting transactions for " + item + " since " + startDate)
 
-      val now = Instant.now()
+      val start = startDate
 
-      val start =
-        startDate
-          .atStartOfDay(ZoneId.systemDefault())
-          .toInstant
-
-      getTransactions(item, start, now)
+      getTransactions(item, start, LocalDate.now())
         .map { results =>
           val (errors, successes) =
             results.partitionMap(res => if (res.isSuccessful) Right(res.body()) else Left(res.errorBody()))

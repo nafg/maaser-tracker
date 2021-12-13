@@ -32,7 +32,7 @@ val jvm = project
   .dependsOn(shared.jvm)
   .settings(
     libraryDependencies ++= Seq(
-      "com.plaid" % "plaid-java" % "8.5.0"
+      "com.plaid" % "plaid-java" % "9.10.0"
     ),
     reForkOptions       := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),
     start               := Def.taskDyn {

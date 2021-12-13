@@ -2,7 +2,7 @@ package maasertracker.server
 
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.implicits.{catsSyntaxApplicativeError, toSemigroupKOps}
-import com.plaid.client.request.ItemRemoveRequest
+import com.plaid.client.model.{ItemRemoveRequest, Products}
 import io.circe.syntax.*
 import maasertracker.AddItemRequest
 import org.http4s.blaze.server.BlazeServerBuilder
@@ -35,16 +35,18 @@ object PlaidHttp4sServer extends IOApp {
         }
       }
 
+    def createLinkTokenRequest = createLinkToken(List(Products.AUTH, Products.TRANSACTIONS))
+
     val routes = HttpRoutes.of[IO] {
       case GET -> Root / "plaid-link-token.jsonp" =>
-        callAsync(createLinkToken(List("auth", "transactions")))
+        callAsync(createLinkTokenRequest)
           .flatMap(res => Ok(s"const plaidLinkToken = '${res.getLinkToken}'"))
       case GET -> Root / "plaid-link-token"       =>
-        callAsync(createLinkToken(List("auth", "transactions")))
+        callAsync(createLinkTokenRequest)
           .flatMap(res => Ok(res.getLinkToken.asJson))
       case GET -> Root / "linkToken" / itemId     =>
         withItem(itemId) { item =>
-          callAsync(createLinkToken(Nil, _.withAccessToken(item.accessToken)))
+          callAsync(createLinkToken(Nil, _.accessToken(item.accessToken)))
             .flatMap(res => Ok(res.getLinkToken.asJson))
             .recoverWith { case ResponseFailed(eb) => BadRequest(eb.toString) }
         }
@@ -52,7 +54,7 @@ object PlaidHttp4sServer extends IOApp {
         itemsRepo.load.flatMap(items => Ok(items.map(_.toShared).asJson))
       case DELETE -> Root / "items" / itemId      =>
         withItem(itemId) { item =>
-          callAsync(plaidService.plaidApiService.itemRemove(new ItemRemoveRequest(item.accessToken))) >>
+          callAsync(plaidService.plaidApi.itemRemove(new ItemRemoveRequest().accessToken(item.accessToken))) >>
             itemsRepo.modify(_.filterNot(_.itemId == itemId)) *> Ok()
         }
       case req @ POST -> Root / "items"           =>
@@ -77,13 +79,13 @@ object PlaidHttp4sServer extends IOApp {
 
   def app =
     for {
-      plaidService <- Resource.eval(plaidService)
-      server       <-
+      plaidApi <- Resource.eval(plaidApi)
+      server   <-
         BlazeServerBuilder[IO](global)
           .bindHttp(9090, "0.0.0.0")
           .withHttpApp(
             Logger.httpApp(logHeaders = true, logBody = false)(
-              httpApp(new PlaidService(plaidService))
+              httpApp(new PlaidService(plaidApi))
             )
           )
           .resource

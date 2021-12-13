@@ -1,23 +1,23 @@
 package maasertracker
 
 import cats.effect.IO
-import com.plaid.client.PlaidClient
+import com.plaid.client.ApiClient
+import com.plaid.client.request.PlaidApi
 import maasertracker.server.PlaidHttp4sServer.ResponseFailed
 import retrofit2.{Call, Callback, Response}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.chaining.scalaUtilChainingOps
 
 package object server {
   val configRepo = new JsonRepo[Config]("config")
 
-  lazy val plaidService =
+  lazy val plaidApi =
     configRepo.load
       .map { config =>
-        val plaid =
-          PlaidClient
-            .newBuilder()
-            .clientIdAndSecret(config.clientId, config.clientSecret)
-            .developmentBaseUrl()
-            .build()
-        plaid.service()
+        new ApiClient(Map("clientId" -> config.clientId, "secret" -> config.clientSecret).asJava)
+          .tap(_.setPlaidAdapter(ApiClient.Development))
+          .createService(classOf[PlaidApi])
       }
 
   val itemsRepo = new JsonRepo[List[PlaidItem]]("items")
