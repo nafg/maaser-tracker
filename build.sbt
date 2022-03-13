@@ -56,7 +56,7 @@ val js = project
   .enablePlugins(ScalablyTypedConverterPlugin).dependsOn(shared.js)
   .settings(
     stFlavour                       := Flavour.Japgolly,
-    useYarn                         := true,
+    useYarn                         := false,
     autoImport.webpackDevServerPort := 8081,
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
