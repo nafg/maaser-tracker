@@ -52,6 +52,7 @@ final class PlaidService(val plaidApi: PlaidApi) {
       amount = tx.getAmount,
       transactionType = tx.getTransactionType.getValue,
       category = Option(tx.getCategory).map(_.asScala.toList).getOrElse(Nil),
+      pending = tx.getPending,
       date = tx.getDate
     )
 

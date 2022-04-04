@@ -33,6 +33,7 @@ case class Transaction(accountId: String,
                        amount: Double,
                        category: List[String],
                        transactionType: String,
+                       pending: Boolean,
                        date: LocalDate)
 
 object Tags extends Enumeration {
