@@ -6,8 +6,12 @@ import com.plaid.client.model
 import com.plaid.client.model.*
 import com.plaid.client.request.PlaidApi
 import io.circe.parser
+import maasertracker.generated.models.InitialBalanceRow
+import maasertracker.generated.tables.SlickProfile.api.*
+import maasertracker.generated.tables.Tables
 import maasertracker.{PlaidItem as _, *}
 import retrofit2.Response
+import slick.additions.entity.KeyedEntity
 
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.*
@@ -88,19 +92,15 @@ final class PlaidService(val plaidApi: PlaidApi) {
     loop(Nil)
   }
 
-  def transactionsInfo(config: Config, items: List[PlaidItem]) = {
-    val startDate = config.knownMaaserBalances.lastKey
-
-    def fetch(item: PlaidItem)
+  def transactionsInfo(items: Seq[PlaidItem]) = {
+    def fetch(item: PlaidItem, startDate: LocalDate)
         : IO[Either[(PlaidItem, Seq[PlaidError]), (Seq[AccountInfo], Seq[maasertracker.Transaction])]] = {
       println("Getting transactions for " + item + " since " + startDate)
 
-      val start = startDate
-
-      getTransactions(item, start, LocalDate.now())
-        .map { results =>
+      getTransactions(item, startDate, LocalDate.now())
+        .map { responses =>
           val (errors, successes) =
-            results.partitionMap(res => if (res.isSuccessful) Right(res.body()) else Left(res.errorBody()))
+            responses.partitionMap(res => if (res.isSuccessful) Right(res.body()) else Left(res.errorBody()))
           if (errors.nonEmpty)
             Left(item -> errors.map(errorBody => parser.decode[PlaidError](errorBody.string()).toTry.get))
           else {
@@ -114,29 +114,35 @@ final class PlaidService(val plaidApi: PlaidApi) {
         }
     }
 
-    items.traverse(fetch).map { data =>
-      val (errors, successes) = data.partitionMap(identity)
+    for {
+      maybeLatestInitialBalance <- Tables.InitialBalanceTable.Q.sortBy(_.date.desc).result.headOption.toIO
+      (startDate, initialMaaserBalance) =
+        maybeLatestInitialBalance match {
+          case Some(KeyedEntity(_, InitialBalanceRow(date, amount))) => date                          -> amount
+          case None                                                  => LocalDate.now().minusDays(90) -> BigDecimal(0)
+        }
+      result <- items.traverse(item => fetch(item, startDate))
+      matchRules <- MatchRulesService.load
+    } yield {
+      val (errors, successes) = result.partitionMap(identity)
       val (accounts, txs)     = successes.unzip
 
-      val result =
-        TransactionsInfo(
-          accounts = accounts.flatten.map(account => account.id -> account).toMap,
-          transactions =
-            txs
-              .flatten
-              .sortBy(_.date)
-              .dropWhile(_.date.isBefore(startDate))
-              .reverse
-              .map(Right(_)),
-          startingMaaserBalance = config.knownMaaserBalances.last._2,
-          maaserPaymentMatchers = config.maaserPaymentMatchers,
-          nonMaaserIncomeMatchers = config.nonMaaserIncomeMatchers,
-          transferMatchers = config.transferMatchers,
-          errors = errors.toMap.map { case (k, v) => k.itemId -> v }
-        )
-          .combineTransfers
-
-      result
+      TransactionsInfo(
+        accounts = accounts.flatten.map(account => account.id -> account).toMap,
+        transactions =
+          txs
+            .flatten
+            .sortBy(_.date)
+            .dropWhile(_.date.isBefore(startDate))
+            .reverse
+            .map(Right(_)),
+        startingMaaserBalance = initialMaaserBalance.doubleValue,
+        maaserPaymentMatchers = matchRules.fulfillment,
+        nonMaaserIncomeMatchers = matchRules.exemption,
+        transferMatchers = matchRules.transfer,
+        errors = errors.toMap.map { case (k, v) => k.itemId -> v }
+      )
+        .combineTransfers
     }
   }
 }

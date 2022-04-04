@@ -1,0 +1,15 @@
+version: "3.2"
+services:
+  db:
+    image: postgres
+    command: -c log_statement=all
+    ports:
+      - "54324:5432"
+    environment:
+      POSTGRES_DB: maasertracker
+      POSTGRES_USER: maasertracker
+      POSTGRES_PASSWORD: "1234"
+    volumes:
+      - ./docker/.pgdata:/var/lib/postgresql/data
+    logging:
+      driver: local

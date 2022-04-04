@@ -13,3 +13,4 @@
 /project/target
 /project/project/target
 metals.sbt
+/jvm/src/main/resources/application.conf

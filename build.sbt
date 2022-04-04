@@ -1,4 +1,5 @@
 import scalajsbundler.sbtplugin.ScalaJSBundlerPlugin.autoImport
+import slick.additions.codegen.{EntityTableModulesCodeGenerator, KeylessModelsCodeGenerator}
 
 import java.awt.Desktop
 
@@ -12,13 +13,19 @@ inThisBuild(
   )
 )
 
-val CirceVersion = "0.14.1"
+val CirceVersion          = "0.14.1"
+val SlickAdditionsVersion = "0.12.0-M1"
 
 val shared = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
+  .enablePlugins(SlickAdditionsCodegenPlugin)
   .settings(
-    libraryDependencies += "io.circe" %%% "circe-generic" % CirceVersion,
-    libraryDependencies += "io.circe" %%% "circe-parser"  % CirceVersion
+    libraryDependencies += "io.circe"       %%% "circe-generic"          % CirceVersion,
+    libraryDependencies += "io.circe"       %%% "circe-parser"           % CirceVersion,
+    libraryDependencies += "io.github.nafg" %%% "slick-additions-entity" % SlickAdditionsVersion,
+    slickConfig                              := SlickConfigPlugin.load(file("jvm/src/main/resources/reference.conf")),
+    slickMetaGenRules                        := new MyGenerationRules("models", "models")("maasertracker.Codecs._"),
+    Compile / sourceGenerators += mkSlickGenerator(new KeylessModelsCodeGenerator)
   )
 
 commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::webpack" :: _)
@@ -30,10 +37,8 @@ val LogbackVersion = "1.2.11"
 
 val jvm = project
   .dependsOn(shared.jvm)
+  .enablePlugins(SlickAdditionsCodegenPlugin)
   .settings(
-    libraryDependencies ++= Seq(
-      "com.plaid" % "plaid-java" % "9.10.0"
-    ),
     reForkOptions       := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),
     start               := Def.taskDyn {
       val re       = reStart.toTask("").taskValue
@@ -42,14 +47,23 @@ val jvm = project
     }.value,
     Compile / mainClass := Some("maasertracker.server.PlaidHttp4sServer"),
     libraryDependencies ++= Seq(
-      "org.http4s"    %% "http4s-blaze-server" % Http4sVersion,
-      "org.http4s"    %% "http4s-blaze-client" % Http4sVersion,
-      "org.http4s"    %% "http4s-circe"        % Http4sVersion,
-      "org.http4s"    %% "http4s-dsl"          % Http4sVersion,
-      "ch.qos.logback" % "logback-classic"     % LogbackVersion
+      "org.http4s"         %% "http4s-blaze-server" % Http4sVersion,
+      "org.http4s"         %% "http4s-blaze-client" % Http4sVersion,
+      "org.http4s"         %% "http4s-circe"        % Http4sVersion,
+      "org.http4s"         %% "http4s-dsl"          % Http4sVersion,
+      "com.plaid"           % "plaid-java"          % "9.10.0",
+      "org.flywaydb"        % "flyway-core"         % "8.5.5",
+      "io.github.nafg"     %% "slick-additions"     % SlickAdditionsVersion,
+      "com.typesafe.slick" %% "slick-hikaricp"      % "3.4.0-M1",
+      "org.postgresql"      % "postgresql"          % "42.3.3",
+      "org.scala-lang"      % "scala-reflect"       % scalaVersion.value,
+      "ch.qos.logback"      % "logback-classic"     % LogbackVersion
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
-    addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
+    addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1"),
+    slickConfig         := SlickConfigPlugin.load((Compile / resourceDirectory).value / "reference.conf"),
+    slickMetaGenRules   := new MyGenerationRules("tables", "Tables")("maasertracker.generated.models._"),
+    Compile / sourceGenerators += mkSlickGenerator(new EntityTableModulesCodeGenerator)
   )
 
 val js = project

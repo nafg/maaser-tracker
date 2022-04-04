@@ -46,7 +46,10 @@ case class Transfer(withdrawal: Transaction, deposit: Transaction) {
 }
 
 @JsonCodec
-case class TransactionMatcher(institution: Option[String], description: Option[String], id: Option[String])
+case class TransactionMatcher(institution: Option[String],
+                              description: Option[String],
+                              id: Option[String],
+                              category: Option[Seq[String]])
 
 @JsonCodec
 case class TransactionsInfo(accounts: Map[String, AccountInfo],
@@ -59,7 +62,8 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
   def matches(tx: Transaction, matcher: TransactionMatcher) =
     matcher.id.forall(_ == tx.transactionId) &&
       matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
-      matcher.description.forall(_ == tx.name)
+      matcher.description.forall(_ == tx.name) &&
+      matcher.category.forall(tx.category.startsWith(_))
 
   def combineTransfers = {
     def canBeTransfer(tx: Transaction) = transferMatchers.exists(matches(tx, _))
