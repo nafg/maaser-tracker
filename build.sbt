@@ -7,7 +7,7 @@ name := "maaser"
 inThisBuild(
   Seq(
     version      := "0.1",
-    scalaVersion := "2.13.7",
+    scalaVersion := "2.13.8",
     scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint", "-Ymacro-annotations", "-Xsource:3")
   )
 )
@@ -25,8 +25,8 @@ commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::web
 
 lazy val start = TaskKey[Unit]("start")
 
-val Http4sVersion  = "0.23.7"
-val LogbackVersion = "1.2.7"
+val Http4sVersion  = "0.23.11"
+val LogbackVersion = "1.2.11"
 
 val jvm = project
   .dependsOn(shared.jvm)
@@ -68,9 +68,9 @@ val js = project
     Compile / npmDependencies ++= Seq(
       "react"             -> "17.0.2",
       "react-dom"         -> "17.0.2",
-      "@types/react"      -> "17.0.37",
-      "@types/react-dom"  -> "17.0.11",
-      "csstype"           -> "3.0.10",
+      "@types/react"      -> "17.0.43",
+      "@types/react-dom"  -> "17.0.14",
+      "csstype"           -> "3.0.11",
       "@types/prop-types" -> "15.7.4",
       "antd"              -> "4.17.3"
     ),
@@ -79,7 +79,7 @@ val js = project
       "webpack-merge" -> "5.8.0",
       "css-loader"    -> "5.2.7",
       "less-loader"   -> "7.3.0",
-      "less"          -> "4.1.1",
+      "less"          -> "4.1.2",
       "style-loader"  -> "2.0.0",
       "file-loader"   -> "6.2.0",
       "url-loader"    -> "4.1.1"
