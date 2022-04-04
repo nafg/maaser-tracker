@@ -15,8 +15,6 @@ import org.http4s.server.middleware.Logger
 import org.http4s.server.staticcontent.*
 import org.http4s.{HttpRoutes, Response}
 
-import scala.concurrent.ExecutionContext.global
-
 object PlaidHttp4sServer extends IOApp {
   case class ResponseFailed(errorBody: okhttp3.Response) extends RuntimeException
 
@@ -81,7 +79,7 @@ object PlaidHttp4sServer extends IOApp {
     for {
       plaidApi <- Resource.eval(plaidApi)
       server   <-
-        BlazeServerBuilder[IO](global)
+        BlazeServerBuilder[IO]
           .bindHttp(9090, "0.0.0.0")
           .withHttpApp(
             Logger.httpApp(logHeaders = true, logBody = false)(
