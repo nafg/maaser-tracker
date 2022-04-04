@@ -8,8 +8,7 @@ import kantan.csv.ops.*
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
 import org.scalajs.dom
-import org.scalajs.dom.raw.HTMLAnchorElement
-import org.scalajs.dom.{Blob, BlobPropertyBag, URL}
+import org.scalajs.dom.{Blob, BlobPropertyBag, HTMLAnchorElement, URL}
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
 import typings.antd.cardMod.CardSize
@@ -124,7 +123,10 @@ object TransactionsView {
                   sw.writeCsv(transactions, rfc.withHeader)
                   val a = dom.window.document.createElement("a").asInstanceOf[HTMLAnchorElement]
                   a.href =
-                    URL.createObjectURL(new Blob(js.Array(sw.toString), BlobPropertyBag("text/csv;charset=utf-8")))
+                    URL.createObjectURL(new Blob(
+                      js.Array(sw.toString),
+                      new BlobPropertyBag { `type` = "text/csv;charset=utf-8" }
+                    ))
                   a.setAttribute("download", item.institution.name + ".csv")
                   a.click()
                 }
@@ -211,7 +213,7 @@ object TransactionsView {
                         TooltipPropsWithTitle()
                           .setTitle(tx.transactionId)
                           .setChildren(tx.date.toString)
-                          .combineWith(RefAttributes[js.Any]())
+                          .combineWith(RefAttributes[Any]())
                       )
                     },
                     columnType("account", "Account")(t => accountLabel(state.info.accounts(t.accountId)))

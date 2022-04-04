@@ -3,7 +3,7 @@ package maasertracker
 import io.circe.Decoder
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{AsyncCallback, React, raw}
+import japgolly.scalajs.react.{AsyncCallback, React, facade}
 import typings.antd.tableInterfaceMod.ColumnType
 import typings.rcTable.interfaceMod.RenderedCell
 
@@ -17,7 +17,7 @@ package object js {
     ColumnType[TransactionsInfo.Item]()
       .setKey(key)
       .setTitle(title)
-      .setRender((_, t, _) => render(t).rawNode.asInstanceOf[raw.React.Node | RenderedCell[TransactionsInfo.Item]])
+      .setRender((_, t, _) => render(t).rawNode.asInstanceOf[facade.React.Node | RenderedCell[TransactionsInfo.Item]])
 
   def columnType(key: String, title: String)(render: Transaction => VdomNode) =
     columnType_(key, title) {

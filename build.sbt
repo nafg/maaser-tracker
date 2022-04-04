@@ -55,13 +55,13 @@ val jvm = project
 val js = project
   .enablePlugins(ScalablyTypedConverterPlugin).dependsOn(shared.js)
   .settings(
-    stFlavour                       := Flavour.Japgolly,
+    stFlavour                       := Flavour.ScalajsReact,
     useYarn                         := false,
     autoImport.webpackDevServerPort := 8081,
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "com.github.japgolly.scalajs-react" %%% "extra"           % "1.7.7",
+      "com.github.japgolly.scalajs-react" %%% "extra"           % "2.0.1",
       "io.github.cquiroz"                 %%% "scala-java-time" % "2.3.0",
       "com.nrinaudo"                      %%% "kantan.csv"      % "0.6.2"
     ),
