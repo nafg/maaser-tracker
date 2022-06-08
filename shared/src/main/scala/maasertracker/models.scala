@@ -62,7 +62,7 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
   def matches(tx: Transaction, matcher: TransactionMatcher) =
     matcher.id.forall(_ == tx.transactionId) &&
       matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
-      matcher.description.forall(_ == tx.name) &&
+      matcher.description.forall(_.trim == tx.name.trim) &&
       matcher.category.forall(tx.category.startsWith(_))
 
   def combineTransfers = {
