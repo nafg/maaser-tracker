@@ -3,7 +3,7 @@ package maasertracker.server
 import cats.effect.IO
 import cats.implicits.toTraverseOps
 import com.plaid.client.model
-import com.plaid.client.model.*
+import com.plaid.client.model.{PlaidError as _, *}
 import com.plaid.client.request.PlaidApi
 import io.circe.parser
 import maasertracker.generated.models.InitialBalanceRow

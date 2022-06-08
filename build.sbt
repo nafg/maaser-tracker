@@ -13,7 +13,7 @@ inThisBuild(
   )
 )
 
-val CirceVersion          = "0.14.1"
+val CirceVersion          = "0.14.2"
 val SlickAdditionsVersion = "0.12.0-M1"
 
 val shared = crossProject(JVMPlatform, JSPlatform)
@@ -32,7 +32,7 @@ commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::web
 
 lazy val start = TaskKey[Unit]("start")
 
-val Http4sVersion  = "0.23.11"
+val Http4sVersion  = "0.23.12"
 val LogbackVersion = "1.2.11"
 
 val jvm = project
@@ -51,11 +51,11 @@ val jvm = project
       "org.http4s"         %% "http4s-blaze-client" % Http4sVersion,
       "org.http4s"         %% "http4s-circe"        % Http4sVersion,
       "org.http4s"         %% "http4s-dsl"          % Http4sVersion,
-      "com.plaid"           % "plaid-java"          % "9.10.0",
-      "org.flywaydb"        % "flyway-core"         % "8.5.5",
+      "com.plaid"           % "plaid-java"          % "11.4.0",
+      "org.flywaydb"        % "flyway-core"         % "8.5.12",
       "io.github.nafg"     %% "slick-additions"     % SlickAdditionsVersion,
       "com.typesafe.slick" %% "slick-hikaricp"      % "3.4.0-M1",
-      "org.postgresql"      % "postgresql"          % "42.3.3",
+      "org.postgresql"      % "postgresql"          % "42.4.0",
       "org.scala-lang"      % "scala-reflect"       % scalaVersion.value,
       "ch.qos.logback"      % "logback-classic"     % LogbackVersion
     ),
@@ -73,8 +73,8 @@ val js = project
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "com.github.japgolly.scalajs-react" %%% "extra"           % "2.0.1",
-      "io.github.cquiroz"                 %%% "scala-java-time" % "2.3.0",
+      "com.github.japgolly.scalajs-react" %%% "extra"           % "2.1.1",
+      "io.github.cquiroz"                 %%% "scala-java-time" % "2.4.0",
       "com.nrinaudo"                      %%% "kantan.csv"      % "0.6.2"
     ),
     Compile / npmDependencies ++= Seq(
