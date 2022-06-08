@@ -59,8 +59,6 @@ val jvm = project
       "org.scala-lang"      % "scala-reflect"       % scalaVersion.value,
       "ch.qos.logback"      % "logback-classic"     % LogbackVersion
     ),
-    addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
-    addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1"),
     slickConfig         := SlickConfigPlugin.load((Compile / resourceDirectory).value / "reference.conf"),
     slickMetaGenRules   := new MyGenerationRules("tables", "Tables")("maasertracker.generated.models._"),
     Compile / sourceGenerators += mkSlickGenerator(new EntityTableModulesCodeGenerator)
