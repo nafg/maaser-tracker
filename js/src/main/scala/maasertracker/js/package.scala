@@ -4,6 +4,7 @@ import io.circe.Decoder
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{AsyncCallback, React, facade}
+import typings.antd.antdStrings.tree
 import typings.antd.tableInterfaceMod.ColumnType
 import typings.rcTable.interfaceMod.RenderedCell
 
@@ -45,6 +46,7 @@ package object js {
     def filtering[A](get: Transaction => A)(repr: A => String = (_: A).toString)(items: Iterable[FilterItem[A]]) =
       self
         .setFilters(items.map(_.toAnt(repr)).toJSArray)
+        .setFilterMode(tree)
         .setOnFilter { (value, item) =>
           val str = value.asInstanceOf[String]
           item.fold(
