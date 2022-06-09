@@ -37,7 +37,7 @@ case class Transaction(accountId: String,
                        date: LocalDate)
 
 object Tags extends Enumeration {
-  val Income, Maaser = Value
+  val Income, Exempted, Maaser = Value
 }
 
 @JsonCodec
@@ -103,17 +103,23 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
     copy(transactions = removed)
   }
 
-  private def isIncome(tx: Transaction) =
-    !nonMaaserIncomeMatchers.exists(matches(tx, _)) &&
-      (tx.amount < 0 || (tx.amount > 0 && tx.category == List("Tax", "Payment")))
+  private def isIncome(tx: Transaction) = {
+    val credit   = tx.amount < 0
+    val taxDebit = tx.amount > 0 && tx.category == List("Tax", "Payment")
+    credit || taxDebit
+  }
+
+  private def isExempted(tx: Transaction) = nonMaaserIncomeMatchers.exists(matches(tx, _))
 
   def isMaaserPayment(tx: Transaction) = tx.amount > 0 && maaserPaymentMatchers.exists(matches(tx, _))
 
   lazy val tags =
     transactions
       .collect {
-        case Right(tx) if isIncome(tx)        => tx.transactionId -> Tags.Income
         case Right(tx) if isMaaserPayment(tx) => tx.transactionId -> Tags.Maaser
+        case Right(tx) if isIncome(tx)        =>
+          tx.transactionId ->
+            (if (isExempted(tx)) Tags.Exempted else Tags.Income)
       }
       .toMap
 
