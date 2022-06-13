@@ -217,33 +217,43 @@ object TransactionsView {
                       )
                     },
                     columnType("account", "Account")(t => accountLabel(state.info.accounts(t.accountId)))
-                      .filtering(_.accountId)()(
+                      .filtering(_.accountId)(
                         state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
                           FilterItem(
-                            institution.institution_id,
+                            institution.institution_id == _,
                             institution.name,
                             accounts.values
                               .toSeq
                               .sortBy(_.account.name)
-                              .map(info => FilterItem(info.id, s"${info.account.name} (${info.account.subtype})"))
+                              .map(info => FilterItem(info.id == _, s"${info.account.name} (${info.account.subtype})"))
                           )
                         }
                       ),
                     columnType("name", "Name")(_.name),
                     columnType("category", "Category")(_.category.mkString(" > "))
-                      .filtering(_.category)(_.asJson.noSpaces)(
+                      .filtering(_.category)(
                         state.categories.toJSArray.map { category =>
-                          FilterItem(category, if (category.isEmpty) "None" else category.mkString(" > "))
+                          FilterItem[List[String]](
+                            category == _,
+                            if (category.isEmpty) "None" else category.mkString(" > ")
+                          )
                         }
                       ),
                     columnType("transactionType", "Type")(_.transactionType),
                     columnType_("amount", "Amount") { t =>
                       val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
                       f"$$$amount%,.2f"
-                    },
+                    }
+                      .filtering(t => t.amount)(
+                        List(
+                          FilterItem(_ < 0, "Credit", hideTransfers = true),
+                          FilterItem(_ > 0, "Debit", hideTransfers = true)
+                        )
+                      ),
                     columnTypeTx("tag", "Tag")(t => state.info.tags.get(t.transactionId).mkString)
-                      .filtering(t => state.info.tags.get(t.transactionId))(_.fold("")(_.toString))(
-                        Tags.values.toList.map(tag => FilterItem(Some(tag), tag.toString))
+                      .filtering(t => state.info.tags.get(t.transactionId))(
+                        FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
+                          Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
                       ),
                     columnTypeTx("maaserBalance", "Maaser balance") { t =>
                       f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"

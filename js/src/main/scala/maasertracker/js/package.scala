@@ -43,17 +43,27 @@ package object js {
     }
 
   implicit class ColumnType_extensions(self: ColumnType[TransactionsInfo.Item]) {
-    def filtering[A](get: Transaction => A)(repr: A => String = (_: A).toString)(items: Iterable[FilterItem[A]]) =
+    private def mkKeys[A](items: Iterable[FilterItem[A]]): Map[FilterItem[A], String] =
+      items.zipWithIndex
+        .flatMap { case (item, n) =>
+          Map(item -> n.toString) ++
+            mkKeys(item.children).view.mapValues(s"$n/" + _)
+        }
+        .toMap
+    def filtering[A](get: Transaction => A)(items: Iterable[FilterItem[A]]) = {
+      val toKey   = mkKeys(items)
+      val fromKey = toKey.map(_.swap)
       self
-        .setFilters(items.map(_.toAnt(repr)).toJSArray)
+        .setFilters(items.map(_.toAnt(toKey)).toJSArray)
         .setFilterMode(tree)
         .setOnFilter { (value, item) =>
-          val str = value.asInstanceOf[String]
+          val filter = fromKey(value.asInstanceOf[String])
           item.fold(
-            t => repr(get(t.withdrawal)) == str || repr(get(t.deposit)) == str,
-            tx => repr(get(tx)) == str
+            t => !filter.hideTransfers && (filter.test(get(t.withdrawal)) || filter.test(get(t.deposit))),
+            tx => filter.test(get(tx))
           )
         }
+    }
   }
 
   def ajax[A: Decoder](endpoint: String) =
