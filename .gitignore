@@ -4,13 +4,7 @@
 /.idea/
 /.metals/
 /.vscode/
-/js/target/
-/jvm/target/
 /out/
-/target/
-/shared/.js/target/
-/shared/.jvm/target/
-/project/target
-/project/project/target
+target/
 metals.sbt
 /jvm/src/main/resources/application.conf
