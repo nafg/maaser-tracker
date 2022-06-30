@@ -1,17 +1,17 @@
 package maasertracker
 
-import io.circe.Decoder
+import scala.concurrent.Future
+import scala.reflect.ClassTag
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js.|
+
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{AsyncCallback, React, facade}
-import typings.antd.antdStrings.tree
+
+import io.circe.Decoder
 import typings.antd.tableInterfaceMod.ColumnType
 import typings.rcTable.interfaceMod.RenderedCell
-
-import scala.concurrent.Future
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import scala.scalajs.js.JSConverters.JSRichIterableOnce
-import scala.scalajs.js.|
 
 package object js {
   def columnType_(key: String, title: String)(render: TransactionsInfo.Item => VdomNode) =
@@ -43,27 +43,7 @@ package object js {
     }
 
   implicit class ColumnType_extensions(self: ColumnType[TransactionsInfo.Item]) {
-    private def mkKeys[A](items: Iterable[FilterItem[A]]): Map[FilterItem[A], String] =
-      items.zipWithIndex
-        .flatMap { case (item, n) =>
-          Map(item -> n.toString) ++
-            mkKeys(item.children).view.mapValues(s"$n/" + _)
-        }
-        .toMap
-    def filtering[A](get: Transaction => A)(items: Iterable[FilterItem[A]]) = {
-      val toKey   = mkKeys(items)
-      val fromKey = toKey.map(_.swap)
-      self
-        .setFilters(items.map(_.toAnt(toKey)).toJSArray)
-        .setFilterMode(tree)
-        .setOnFilter { (value, item) =>
-          val filter = fromKey(value.asInstanceOf[String])
-          item.fold(
-            t => !filter.hideTransfers && (filter.test(get(t.withdrawal)) || filter.test(get(t.deposit))),
-            tx => filter.test(get(tx))
-          )
-        }
-    }
+    def filtering[A](filterType: FilterType[A], current: Set[FilterItem[A]]) = filterType.filtering(current, self)
   }
 
   def ajax[A: Decoder](endpoint: String) =
@@ -73,4 +53,10 @@ package object js {
       .asAsyncCallback
       .map(xhr => io.circe.parser.decode[A](xhr.responseText))
       .flatMap(result => AsyncCallback.fromFuture(Future.fromTry(result.toTry)))
+
+  def nullableToOption[A: ClassTag](value: A | Null): Option[A] =
+    value match {
+      case value: A               => Some(value)
+      case value if value == null => None
+    }
 }

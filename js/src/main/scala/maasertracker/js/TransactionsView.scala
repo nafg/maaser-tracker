@@ -1,14 +1,20 @@
 package maasertracker.js
 
-import io.circe.syntax.EncoderOps
+import java.io.StringWriter
+
+import scala.scalajs.js
+import scala.scalajs.js.JSConverters.JSRichIterableOnce
+
+import org.scalajs.dom
+import org.scalajs.dom.{Blob, BlobPropertyBag, HTMLAnchorElement, URL}
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
+
+import io.circe.syntax.EncoderOps
 import kantan.csv.ops.*
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
-import org.scalajs.dom
-import org.scalajs.dom.{Blob, BlobPropertyBag, HTMLAnchorElement, URL}
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
 import typings.antd.cardMod.CardSize
@@ -17,10 +23,6 @@ import typings.antd.tooltipMod.TooltipPropsWithTitle
 import typings.antd.{antdBooleans, antdStrings}
 import typings.rcTable
 import typings.react.mod.{CSSProperties, RefAttributes}
-
-import java.io.StringWriter
-import scala.scalajs.js
-import scala.scalajs.js.JSConverters.JSRichIterableOnce
 
 object TransactionsView {
   def accountNameParts(acct: AccountInfo) = {
@@ -55,12 +57,55 @@ object TransactionsView {
     )
   }
 
-  case class Props(state: Main.State, refresh: Callback)
+  case class Props(state: Main.State, refresh: Callback) {
+    val accountFilterType =
+      new FilterType(_.accountId)(
+        state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
+          FilterItem(
+            institution.institution_id == _,
+            institution.name,
+            accounts.values
+              .toSeq
+              .sortBy(_.account.name)
+              .map(info => FilterItem(info.id == _, s"${info.account.name} (${info.account.subtype})"))
+          )
+        }
+      )
+
+    val categoryFilterType =
+      new FilterType(_.category)(
+        state.categories.toJSArray.map { category =>
+          FilterItem[List[String]](
+            category == _,
+            if (category.isEmpty) "None" else category.mkString(" > ")
+          )
+        }
+      )
+
+    val amountFilterType =
+      new FilterType(t => t.amount)(
+        List(
+          FilterItem(_ < 0, "Credit", hideTransfers = true),
+          FilterItem(_ > 0, "Debit", hideTransfers = true)
+        )
+      )
+
+    val tagFilterType =
+      new FilterType(t => state.info.tags.get(t.transactionId))(
+        FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
+          Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
+      )
+  }
+
+  case class State(accountFilters: Set[FilterItem[String]] = Set.empty,
+                   categoryFilters: Set[FilterItem[List[String]]] = Set.empty,
+                   amountFilters: Set[FilterItem[Double]] = Set.empty,
+                   tagFilters: Set[FilterItem[Option[Tags.Value]]] = Set.empty)
 
   val component =
     ScalaComponent
       .builder[Props]
-      .initialState(false)
+      .initialState(State())
       .render { self =>
         val props          = self.props
         import props.state
@@ -207,6 +252,21 @@ object TransactionsView {
                 Table[TransactionsInfo.Item]()
                   .pagination(antdBooleans.`false`)
                   .dataSource(state.info.transactions.reverse.toJSArray)
+                  .onChange { case (_, filters, _, _) =>
+                    self.modState { state =>
+                      def get[A](filterType: FilterType[A], name: String): Set[FilterItem[A]] =
+                        filters.get(name)
+                          .flatMap(nullableToOption)
+                          .map(_.map(filterType.fromKey(_)).toSet)
+                          .getOrElse(Set.empty)
+                      state.copy(
+                        accountFilters = get(props.accountFilterType, "account"),
+                        categoryFilters = get(props.categoryFilterType, "category"),
+                        amountFilters = get(props.amountFilterType, "amount"),
+                        tagFilters = get(props.tagFilterType, "tag")
+                      )
+                    }
+                  }
                   .columnsVarargs(
                     columnType("date", "Date") { tx =>
                       Tooltip(
@@ -217,44 +277,18 @@ object TransactionsView {
                       )
                     },
                     columnType("account", "Account")(t => accountLabel(state.info.accounts(t.accountId)))
-                      .filtering(_.accountId)(
-                        state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
-                          FilterItem(
-                            institution.institution_id == _,
-                            institution.name,
-                            accounts.values
-                              .toSeq
-                              .sortBy(_.account.name)
-                              .map(info => FilterItem(info.id == _, s"${info.account.name} (${info.account.subtype})"))
-                          )
-                        }
-                      ),
+                      .filtering(props.accountFilterType, self.state.accountFilters),
                     columnType("name", "Name")(_.name),
                     columnType("category", "Category")(_.category.mkString(" > "))
-                      .filtering(_.category)(
-                        state.categories.toJSArray.map { category =>
-                          FilterItem[List[String]](
-                            category == _,
-                            if (category.isEmpty) "None" else category.mkString(" > ")
-                          )
-                        }
-                      ),
+                      .filtering(props.categoryFilterType, self.state.categoryFilters),
                     columnType("transactionType", "Type")(_.transactionType),
                     columnType_("amount", "Amount") { t =>
                       val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
                       f"$$$amount%,.2f"
                     }
-                      .filtering(t => t.amount)(
-                        List(
-                          FilterItem(_ < 0, "Credit", hideTransfers = true),
-                          FilterItem(_ > 0, "Debit", hideTransfers = true)
-                        )
-                      ),
+                      .filtering(props.amountFilterType, self.state.amountFilters),
                     columnTypeTx("tag", "Tag")(t => state.info.tags.get(t.transactionId).mkString)
-                      .filtering(t => state.info.tags.get(t.transactionId))(
-                        FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
-                          Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
-                      ),
+                      .filtering(props.tagFilterType, self.state.tagFilters),
                     columnTypeTx("maaserBalance", "Maaser balance") { t =>
                       f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"
                     }
