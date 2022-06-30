@@ -16,6 +16,12 @@ inThisBuild(
 val CirceVersion          = "0.14.2"
 val SlickAdditionsVersion = "0.12.0-M1"
 
+val migrations = project
+  .enablePlugins(SlickFlywayPlugin)
+  .settings(
+    slickConfig := SlickConfigPlugin.load(file("jvm/src/main/resources/reference.conf"))
+  )
+
 val shared = crossProject(JVMPlatform, JSPlatform)
   .crossType(CrossType.Pure)
   .enablePlugins(SlickAdditionsCodegenPlugin)
@@ -23,7 +29,7 @@ val shared = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += "io.circe"       %%% "circe-generic"          % CirceVersion,
     libraryDependencies += "io.circe"       %%% "circe-parser"           % CirceVersion,
     libraryDependencies += "io.github.nafg" %%% "slick-additions-entity" % SlickAdditionsVersion,
-    slickConfig                              := SlickConfigPlugin.load(file("jvm/src/main/resources/reference.conf")),
+    slickConfig                              := (migrations / slickConfig).value,
     slickMetaGenRules                        := new MyGenerationRules("models", "models")("maasertracker.Codecs._"),
     Compile / sourceGenerators += mkSlickGenerator(new KeylessModelsCodeGenerator)
   )
@@ -59,7 +65,7 @@ val jvm = project
       "org.scala-lang"      % "scala-reflect"       % scalaVersion.value,
       "ch.qos.logback"      % "logback-classic"     % LogbackVersion
     ),
-    slickConfig         := SlickConfigPlugin.load((Compile / resourceDirectory).value / "reference.conf"),
+    slickConfig         := (migrations / slickConfig).value,
     slickMetaGenRules   := new MyGenerationRules("tables", "Tables")("maasertracker.generated.models._"),
     Compile / sourceGenerators += mkSlickGenerator(new EntityTableModulesCodeGenerator)
   )
