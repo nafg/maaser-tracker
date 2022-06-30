@@ -8,6 +8,7 @@ import scala.scalajs.js.JSConverters.JSRichIterableOnce
 import org.scalajs.dom
 import org.scalajs.dom.{Blob, BlobPropertyBag, HTMLAnchorElement, URL}
 import japgolly.scalajs.react.extra.Ajax
+import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 
@@ -15,6 +16,8 @@ import io.circe.syntax.EncoderOps
 import kantan.csv.ops.*
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
+import monocle.Iso
+import monocle.macros.GenLens
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
 import typings.antd.cardMod.CardSize
@@ -58,56 +61,92 @@ object TransactionsView {
   }
 
   case class Props(state: Main.State, refresh: Callback) {
-    val accountFilterType =
-      new FilterType(_.accountId)(
-        state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
-          FilterItem(
-            institution.institution_id == _,
-            institution.name,
-            accounts.values
-              .toSeq
-              .sortBy(_.account.name)
-              .map(info => FilterItem(info.id == _, s"${info.account.name} (${info.account.subtype})"))
+    val dateColType =
+      ColType("date", "Date")
+        .withRenderEach { tx =>
+          Tooltip(
+            TooltipPropsWithTitle()
+              .setTitle(tx.transactionId)
+              .setChildren(tx.date.toString)
+              .combineWith(RefAttributes[Any]())
           )
         }
-      )
 
-    val categoryFilterType =
-      new FilterType(_.category)(
-        state.categories.toJSArray.map { category =>
-          FilterItem[List[String]](
-            category == _,
-            if (category.isEmpty) "None" else category.mkString(" > ")
-          )
+    val accountColType  =
+      ColType("account", "Account")
+        .withRenderEach(t => accountLabel(state.info.accounts(t.accountId)))
+        .filtering(_.accountId, State.lensAccountFilters)(
+          state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
+            FilterItem(
+              institution.institution_id == _,
+              institution.name,
+              accounts.values
+                .toSeq
+                .sortBy(_.account.name)
+                .map(info => FilterItem(info.id == _, s"${info.account.name} (${info.account.subtype})"))
+            )
+          }
+        )
+    val nameColType     = ColType("name", "Name").withRenderEach(_.name)
+    val categoryColType =
+      ColType("category", "Category")
+        .withRenderEach(_.category.mkString(" > "))
+        .filtering(_.category, State.lensCategoryFilters)(
+          state.categories.toJSArray.map { category =>
+            FilterItem[List[String]](
+              category == _,
+              if (category.isEmpty) "None" else category.mkString(" > ")
+            )
+          }
+        )
+    val typeColType     = ColType("transactionType", "Type").withRenderEach(_.transactionType)
+    val amountColType   =
+      ColType(
+        "amount",
+        "Amount",
+        { t =>
+          val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
+          f"$$$amount%,.2f"
         }
-      )
-
-    val amountFilterType =
-      new FilterType(t => t.amount)(
+      ).filtering(t => t.amount, State.lensAmountFilters)(
         List(
           FilterItem(_ < 0, "Credit", hideTransfers = true),
           FilterItem(_ > 0, "Debit", hideTransfers = true)
         )
       )
 
-    val tagFilterType =
-      new FilterType(t => state.info.tags.get(t.transactionId))(
-        FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
-          Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
-      )
+    val tagColType =
+      ColType("tag", "Tag")
+        .withRender(t => state.info.tags.get(t.transactionId).mkString)
+        .filtering(t => state.info.tags.get(t.transactionId), State.lensTagFilters)(
+          FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
+            Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
+        )
+
+    val maaserBalanceColType =
+      ColType("maaserBalance", "Maaser balance")
+        .withRender { t =>
+          f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"
+        }
+
+    val filterColTypes = List(accountColType, categoryColType, amountColType, tagColType)
   }
 
   case class State(accountFilters: Set[FilterItem[String]] = Set.empty,
                    categoryFilters: Set[FilterItem[List[String]]] = Set.empty,
                    amountFilters: Set[FilterItem[Double]] = Set.empty,
                    tagFilters: Set[FilterItem[Option[Tags.Value]]] = Set.empty)
+  object State {
+    val lensAccountFilters  = GenLens[State](_.accountFilters)
+    val lensCategoryFilters = GenLens[State](_.categoryFilters)
+    val lensAmountFilters   = GenLens[State](_.amountFilters)
+    val lensTagFilters      = GenLens[State](_.tagFilters)
+  }
 
-  val component =
+  private val component =
     ScalaComponent
-      .builder[Props]
-      .initialState(State())
-      .render { self =>
-        val props          = self.props
+      .builder[(Props, State, RouterCtl[State])]
+      .render_P { case (props, state1, routerCtl) =>
         import props.state
         val itemMenuItems  = state.items.toTagMod(item => Menu.Item.withKey(item.itemId)(<.a(item.institution.name)))
         val removeItemMenu =
@@ -119,7 +158,7 @@ object TransactionsView {
                     case false => Callback.empty
                     case true  =>
                       Ajax("DELETE", s"/api/items/${item.itemId}").send.asAsyncCallback
-                        .flatMapSync(_ => self.props.refresh)
+                        .flatMapSync(_ => props.refresh)
                         .toCallback
                   }
               }
@@ -170,7 +209,9 @@ object TransactionsView {
                   a.href =
                     URL.createObjectURL(new Blob(
                       js.Array(sw.toString),
-                      new BlobPropertyBag { `type` = "text/csv;charset=utf-8" }
+                      new BlobPropertyBag {
+                        `type` = "text/csv;charset=utf-8"
+                      }
                     ))
                   a.setAttribute("download", item.institution.name + ".csv")
                   a.click()
@@ -195,7 +236,7 @@ object TransactionsView {
                                   .post("/api/items")
                                   .send(AddItemRequest(publicToken, institution).asJson.spaces4)
                                   .asAsyncCallback
-                                  .flatMapSync(_ => self.props.refresh)
+                                  .flatMapSync(_ => props.refresh)
 
                               Callback {
                                 makePlaid(plaidLinkToken) { (publicToken, metadata) =>
@@ -219,7 +260,7 @@ object TransactionsView {
                                   ajax[String]("/api/linkToken/" + item.itemId)
                                     .flatMapSync { token =>
                                       Callback {
-                                        makePlaid(token)((_, _) => self.props.refresh)
+                                        makePlaid(token)((_, _) => props.refresh)
                                           .open()
                                       }
                                     }
@@ -253,45 +294,20 @@ object TransactionsView {
                   .pagination(antdBooleans.`false`)
                   .dataSource(state.info.transactions.reverse.toJSArray)
                   .onChange { case (_, filters, _, _) =>
-                    self.modState { state =>
-                      def get[A](filterType: FilterType[A], name: String): Set[FilterItem[A]] =
-                        filters.get(name)
-                          .flatMap(nullableToOption)
-                          .map(_.map(filterType.fromKey(_)).toSet)
-                          .getOrElse(Set.empty)
-                      state.copy(
-                        accountFilters = get(props.accountFilterType, "account"),
-                        categoryFilters = get(props.categoryFilterType, "category"),
-                        amountFilters = get(props.amountFilterType, "amount"),
-                        tagFilters = get(props.tagFilterType, "tag")
-                      )
-                    }
+                    routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
                   }
                   .columnsVarargs(
-                    columnType("date", "Date") { tx =>
-                      Tooltip(
-                        TooltipPropsWithTitle()
-                          .setTitle(tx.transactionId)
-                          .setChildren(tx.date.toString)
-                          .combineWith(RefAttributes[Any]())
-                      )
-                    },
-                    columnType("account", "Account")(t => accountLabel(state.info.accounts(t.accountId)))
-                      .filtering(props.accountFilterType, self.state.accountFilters),
-                    columnType("name", "Name")(_.name),
-                    columnType("category", "Category")(_.category.mkString(" > "))
-                      .filtering(props.categoryFilterType, self.state.categoryFilters),
-                    columnType("transactionType", "Type")(_.transactionType),
-                    columnType_("amount", "Amount") { t =>
-                      val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
-                      f"$$$amount%,.2f"
-                    }
-                      .filtering(props.amountFilterType, self.state.amountFilters),
-                    columnTypeTx("tag", "Tag")(t => state.info.tags.get(t.transactionId).mkString)
-                      .filtering(props.tagFilterType, self.state.tagFilters),
-                    columnTypeTx("maaserBalance", "Maaser balance") { t =>
-                      f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"
-                    }
+                    List(
+                      props.dateColType,
+                      props.accountColType,
+                      props.nameColType,
+                      props.categoryColType,
+                      props.typeColType,
+                      props.amountColType,
+                      props.tagColType,
+                      props.maaserBalanceColType
+                    )
+                      .map(_.toAnt(state1))*
                   )
                   .size(small)
                   .scroll(
@@ -316,4 +332,36 @@ object TransactionsView {
         )
       }
       .build
+
+  private val baseUrl = BaseUrl.fromWindowOrigin_/
+
+  private type QueryParamsMap = Map[String, Seq[String]]
+
+  private def queryParamsStateIso(props: Props) =
+    Iso[QueryParamsMap, State] { map =>
+      props.filterColTypes.foldRight(State()) { case (filteringColType, state) =>
+        map.get(filteringColType.key) match {
+          case Some(keys) => filteringColType.keysToState(keys)(state)
+          case None       => state
+        }
+      }
+    } { state =>
+      props.filterColTypes
+        .map { filteringColType =>
+          filteringColType.key -> filteringColType.stateToKeys(state).map(_.toString).toSeq
+        }
+        .toMap
+    }
+
+  private val routerConfig = RouterWithPropsConfigDsl[QueryParamsMap, Props].buildConfig { dsl =>
+    import dsl.*
+    (dynamicRouteCT(queryToMultimap) ~>
+      dynRenderRP { (state, routerCtl, props) =>
+        val iso = queryParamsStateIso(props)
+        component.apply((props, iso.get(state), routerCtl.contramap(iso.reverseGet)))
+      })
+      .notFound(redirectToPage(Map())(SetRouteVia.HistoryReplace))
+  }
+
+  val router = RouterWithProps(baseUrl, routerConfig)
 }

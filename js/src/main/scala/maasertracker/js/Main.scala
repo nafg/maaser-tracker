@@ -1,14 +1,15 @@
 package maasertracker.js
 
-import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{Callback, ScalaComponent}
-import maasertracker.{PlaidItem, TransactionsInfo, Transfer}
-import org.scalajs.dom
-
 import scala.collection.immutable.SortedSet
 import scala.math.Ordering.Implicits.seqOrdering
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
+
+import org.scalajs.dom
+import japgolly.scalajs.react.vdom.html_<^.*
+import japgolly.scalajs.react.{Callback, ScalaComponent}
+
+import maasertracker.{PlaidItem, TransactionsInfo, Transfer}
 
 object Main {
   @js.native
@@ -44,7 +45,7 @@ object Main {
           case None               => <.div("Loading...")
           case Some(Left(error))  => <.div("ERROR: " + error)
           case Some(Right(state)) =>
-            TransactionsView.component(
+            TransactionsView.router(
               TransactionsView.Props(
                 state = state,
                 refresh = loadData(state => self.setState(Some(state)))

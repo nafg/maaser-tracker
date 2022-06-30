@@ -1,7 +1,8 @@
-import scalajsbundler.sbtplugin.ScalaJSBundlerPlugin.autoImport
+import java.awt.Desktop
+
 import slick.additions.codegen.{EntityTableModulesCodeGenerator, KeylessModelsCodeGenerator}
 
-import java.awt.Desktop
+import scalajsbundler.sbtplugin.ScalaJSBundlerPlugin.autoImport
 
 name := "maaser"
 
@@ -79,9 +80,10 @@ val js = project
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "com.github.japgolly.scalajs-react" %%% "extra"           % "2.1.1",
-      "io.github.cquiroz"                 %%% "scala-java-time" % "2.4.0",
-      "com.nrinaudo"                      %%% "kantan.csv"      % "0.6.2"
+      "dev.optics"                        %%% "monocle-macro"      % "3.1.0",
+      "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % "2.1.1",
+      "io.github.cquiroz"                 %%% "scala-java-time"    % "2.4.0",
+      "com.nrinaudo"                      %%% "kantan.csv"         % "0.6.2"
     ),
     Compile / npmDependencies ++= Seq(
       "react"             -> "17.0.2",
