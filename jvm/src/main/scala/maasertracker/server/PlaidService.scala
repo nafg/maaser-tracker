@@ -1,5 +1,11 @@
 package maasertracker.server
 
+import java.time.LocalDate
+
+import scala.jdk.CollectionConverters.*
+
+import slick.additions.entity.KeyedEntity
+
 import cats.effect.IO
 import cats.implicits.toTraverseOps
 import com.plaid.client.model
@@ -11,10 +17,6 @@ import maasertracker.generated.tables.SlickProfile.api.*
 import maasertracker.generated.tables.Tables
 import maasertracker.{PlaidItem as _, *}
 import retrofit2.Response
-import slick.additions.entity.KeyedEntity
-
-import java.time.LocalDate
-import scala.jdk.CollectionConverters.*
 
 final class PlaidService(val plaidApi: PlaidApi) {
   def createLinkToken(products: Seq[Products], mod: LinkTokenCreateRequest => LinkTokenCreateRequest = identity) =
@@ -134,7 +136,6 @@ final class PlaidService(val plaidApi: PlaidApi) {
             .flatten
             .sortBy(_.date)
             .dropWhile(_.date.isBefore(startDate))
-            .reverse
             .map(Right(_)),
         startingMaaserBalance = initialMaaserBalance.doubleValue,
         maaserPaymentMatchers = matchRules.fulfillment,
@@ -143,6 +144,7 @@ final class PlaidService(val plaidApi: PlaidApi) {
         errors = errors.toMap.map { case (k, v) => k.itemId -> v }
       )
         .combineTransfers
+        .sorted
     }
   }
 }

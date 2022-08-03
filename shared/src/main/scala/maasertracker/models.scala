@@ -1,12 +1,13 @@
 package maasertracker
 
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+
+import scala.math.Ordering.Implicits.infixOrderingOps
+
 import cats.implicits.*
 import io.circe.Codec
 import io.circe.generic.JsonCodec
-
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
-import scala.math.Ordering.Implicits.infixOrderingOps
 
 @JsonCodec
 case class PlaidError(error_type: String, error_code: String, error_message: String)
@@ -125,7 +126,7 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
 
   lazy val maaserBalances = {
     val maaserBalances0 =
-      transactions.scanRight(Option.empty[String] -> startingMaaserBalance) {
+      transactions.reverse.scanRight(Option.empty[String] -> startingMaaserBalance) {
         case (Left(_), (_, m))   => None -> m
         case (Right(tx), (_, m)) =>
           Some(tx.transactionId) ->
@@ -139,6 +140,12 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
       .collect { case (Some(id), d) => (id, d) }
       .toMap
   }
+
+  def sorted =
+    copy(transactions = transactions.sortBy {
+      case Left(Transfer(withdrawal, deposit)) => (withdrawal.date min deposit.date) -> None
+      case Right(value)                        => value.date                        -> tags.get(value.transactionId)
+    })
 
   def untilLastMaaserPayment = {
     def loop(txs: List[TransactionsInfo.Item], maaserDate: Option[LocalDate] = None): List[TransactionsInfo.Item] =

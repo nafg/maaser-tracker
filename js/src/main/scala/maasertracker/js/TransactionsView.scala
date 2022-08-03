@@ -292,7 +292,7 @@ object TransactionsView {
                 ),
                 Table[TransactionsInfo.Item]()
                   .pagination(antdBooleans.`false`)
-                  .dataSource(state.info.transactions.reverse.toJSArray)
+                  .dataSource(state.info.transactions.toJSArray)
                   .onChange { case (_, filters, _, _) =>
                     routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
                   }
