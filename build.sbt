@@ -43,7 +43,7 @@ val Http4sVersion  = "0.23.12"
 val LogbackVersion = "1.2.11"
 
 val jvm = project
-  .dependsOn(shared.jvm)
+  .dependsOn(migrations, shared.jvm)
   .enablePlugins(SlickAdditionsCodegenPlugin)
   .settings(
     reForkOptions       := reForkOptions.value.withWorkingDirectory(Option((ThisBuild / baseDirectory).value)),

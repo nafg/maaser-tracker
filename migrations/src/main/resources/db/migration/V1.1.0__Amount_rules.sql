@@ -1,0 +1,3 @@
+ALTER TABLE match_rule
+ADD COLUMN min_mount  DECIMAL NULL,
+ADD COLUMN max_amount DECIMAL NULL;

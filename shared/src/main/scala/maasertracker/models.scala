@@ -47,27 +47,35 @@ case class Transfer(withdrawal: Transaction, deposit: Transaction) {
 }
 
 @JsonCodec
-case class TransactionMatcher(institution: Option[String],
+case class TransactionMatcher(id: Option[String],
+                              institution: Option[String],
                               description: Option[String],
-                              id: Option[String],
-                              category: Option[Seq[String]])
+                              category: Option[Seq[String]],
+                              minAmount: Option[BigDecimal],
+                              maxAmount: Option[BigDecimal])
+
+@JsonCodec
+case class Matchers(transfer: Seq[TransactionMatcher],
+                    income: Seq[TransactionMatcher],
+                    nonMaaserIncome: Seq[TransactionMatcher],
+                    maaserPayment: Seq[TransactionMatcher])
 
 @JsonCodec
 case class TransactionsInfo(accounts: Map[String, AccountInfo],
                             transactions: Seq[TransactionsInfo.Item],
                             startingMaaserBalance: Double,
-                            maaserPaymentMatchers: Seq[TransactionMatcher],
-                            nonMaaserIncomeMatchers: Seq[TransactionMatcher],
-                            transferMatchers: Seq[TransactionMatcher],
+                            matchers: Matchers,
                             errors: Map[String, Seq[PlaidError]]) {
   def matches(tx: Transaction, matcher: TransactionMatcher) =
     matcher.id.forall(_ == tx.transactionId) &&
       matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
       matcher.description.forall(_.trim == tx.name.trim) &&
-      matcher.category.forall(tx.category.startsWith(_))
+      matcher.category.forall(tx.category.startsWith(_)) &&
+      matcher.minAmount.forall(tx.amount > _) &&
+      matcher.maxAmount.forall(tx.amount < _)
 
   def combineTransfers = {
-    def canBeTransfer(tx: Transaction) = transferMatchers.exists(matches(tx, _))
+    def canBeTransfer(tx: Transaction) = matchers.transfer.exists(matches(tx, _))
 
     def isTransferPair(a: Transaction, b: Transaction) =
       canBeTransfer(a) && canBeTransfer(b) &&
@@ -104,15 +112,11 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
     copy(transactions = removed)
   }
 
-  private def isIncome(tx: Transaction) = {
-    val credit   = tx.amount < 0
-    val taxDebit = tx.amount > 0 && tx.category == List("Tax", "Payment")
-    credit || taxDebit
-  }
+  private def isIncome(tx: Transaction) = matchers.income.exists(matches(tx, _))
 
-  private def isExempted(tx: Transaction) = nonMaaserIncomeMatchers.exists(matches(tx, _))
+  private def isExempted(tx: Transaction) = matchers.nonMaaserIncome.exists(matches(tx, _))
 
-  def isMaaserPayment(tx: Transaction) = tx.amount > 0 && maaserPaymentMatchers.exists(matches(tx, _))
+  private def isMaaserPayment(tx: Transaction) = tx.amount > 0 && matchers.maaserPayment.exists(matches(tx, _))
 
   lazy val tags =
     transactions
