@@ -14,8 +14,8 @@ inThisBuild(
   )
 )
 
-val CirceVersion          = "0.14.2"
-val SlickAdditionsVersion = "0.12.0-M1"
+val CirceVersion          = "0.14.3"
+val SlickAdditionsVersion = "0.12.0"
 
 val migrations = project
   .enablePlugins(SlickFlywayPlugin)
@@ -39,9 +39,10 @@ commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::web
 
 lazy val start = TaskKey[Unit]("start")
 
-val Http4sVersion  = "0.23.12"
-val LogbackVersion = "1.2.11"
+val Http4sVersion  = "0.23.16"
+val LogbackVersion = "1.4.1"
 
+//noinspection ScalaUnusedSymbol,ScalaWeakerAccess
 val jvm = project
   .dependsOn(migrations, shared.jvm)
   .enablePlugins(SlickAdditionsCodegenPlugin)
@@ -58,11 +59,11 @@ val jvm = project
       "org.http4s"         %% "http4s-ember-client" % Http4sVersion,
       "org.http4s"         %% "http4s-circe"        % Http4sVersion,
       "org.http4s"         %% "http4s-dsl"          % Http4sVersion,
-      "com.plaid"           % "plaid-java"          % "11.8.0",
-      "org.flywaydb"        % "flyway-core"         % "9.1.0",
+      "com.plaid"           % "plaid-java"          % "12.0.0",
+      "org.flywaydb"        % "flyway-core"         % "9.3.1",
       "io.github.nafg"     %% "slick-additions"     % SlickAdditionsVersion,
-      "com.typesafe.slick" %% "slick-hikaricp"      % "3.4.0-M1",
-      "org.postgresql"      % "postgresql"          % "42.4.0",
+      "com.typesafe.slick" %% "slick-hikaricp"      % "3.4.1",
+      "org.postgresql"      % "postgresql"          % "42.5.0",
       "org.scala-lang"      % "scala-reflect"       % scalaVersion.value,
       "ch.qos.logback"      % "logback-classic"     % LogbackVersion
     ),
@@ -71,6 +72,7 @@ val jvm = project
     Compile / sourceGenerators += mkSlickGenerator(new EntityTableModulesCodeGenerator)
   )
 
+//noinspection ScalaUnusedSymbol,ScalaWeakerAccess
 val js = project
   .enablePlugins(ScalablyTypedConverterPlugin).dependsOn(shared.js)
   .settings(
@@ -83,7 +85,7 @@ val js = project
       "dev.optics"                        %%% "monocle-macro"      % "3.1.0",
       "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % "2.1.1",
       "io.github.cquiroz"                 %%% "scala-java-time"    % "2.4.0",
-      "com.nrinaudo"                      %%% "kantan.csv"         % "0.6.2"
+      "com.nrinaudo"                      %%% "kantan.csv"         % "0.7.0"
     ),
     Compile / npmDependencies ++= Seq(
       "react"             -> "17.0.2",
