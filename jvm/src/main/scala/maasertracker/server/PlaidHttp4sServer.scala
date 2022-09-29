@@ -1,7 +1,13 @@
 package maasertracker.server
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
+import slick.jdbc.DataSourceJdbcDataSource
+import slick.jdbc.hikaricp.HikariCPJdbcDataSource
+
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits.{catsSyntaxApplicativeError, toSemigroupKOps}
+import com.comcast.ip4s.IpLiteralSyntax
 import com.plaid.client.model.{ItemRemoveRequest, Products}
 import io.circe.syntax.*
 import maasertracker.generated.models.{PlaidInstitutionRow, PlaidItemRow}
@@ -9,19 +15,16 @@ import maasertracker.generated.tables.SlickProfile.api.*
 import maasertracker.generated.tables.Tables
 import maasertracker.{AddItemRequest, Institution}
 import org.flywaydb.core.Flyway
-import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.circe.jsonEncoder
 import org.http4s.dsl.io.*
+import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.http4s.server.middleware.Logger
 import org.http4s.server.staticcontent.*
 import org.http4s.{HttpRoutes, Response}
-import slick.jdbc.DataSourceJdbcDataSource
-import slick.jdbc.hikaricp.HikariCPJdbcDataSource
 
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object PlaidHttp4sServer extends IOApp {
   case class ResponseFailed(errorBody: okhttp3.Response) extends RuntimeException
@@ -116,14 +119,15 @@ object PlaidHttp4sServer extends IOApp {
   }
 
   def app =
-    BlazeServerBuilder[IO]
-      .bindHttp(9090, "0.0.0.0")
+    EmberServerBuilder.default[IO]
+      .withHost(host"0.0.0.0")
+      .withPort(port"9090")
       .withHttpApp(
         Logger.httpApp(logHeaders = true, logBody = false)(
           httpApp(new PlaidService(plaidApi))
         )
       )
-      .resource
+      .build
 
   def run(args: List[String]) =
     IO {

@@ -54,8 +54,8 @@ val jvm = project
     }.value,
     Compile / mainClass := Some("maasertracker.server.PlaidHttp4sServer"),
     libraryDependencies ++= Seq(
-      "org.http4s"         %% "http4s-blaze-server" % Http4sVersion,
-      "org.http4s"         %% "http4s-blaze-client" % Http4sVersion,
+      "org.http4s"         %% "http4s-ember-server" % Http4sVersion,
+      "org.http4s"         %% "http4s-ember-client" % Http4sVersion,
       "org.http4s"         %% "http4s-circe"        % Http4sVersion,
       "org.http4s"         %% "http4s-dsl"          % Http4sVersion,
       "com.plaid"           % "plaid-java"          % "11.8.0",
