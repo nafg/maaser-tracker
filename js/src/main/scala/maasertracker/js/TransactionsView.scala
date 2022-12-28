@@ -105,7 +105,7 @@ object TransactionsView {
         "amount",
         "Amount",
         { t =>
-          val amount = -1 * t.fold(_.withdrawal.amount, _.amount)
+          val amount = -1 * t.fold(_.deposit.amount, _.amount)
           f"$$$amount%,.2f"
         }
       ).filtering(t => t.amount, State.lensAmountFilters)(
