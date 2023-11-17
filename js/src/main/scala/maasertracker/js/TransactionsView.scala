@@ -106,7 +106,14 @@ object TransactionsView {
         "Amount",
         { t =>
           val amount = -1 * t.fold(_.deposit.amount, _.amount)
-          f"$$$amount%,.2f"
+          <.span(
+            ^.color := (t match {
+              case Right(tx) if tx.amount > 0 => "red"
+              case Right(tx) if tx.amount < 0 => "green"
+              case _                          => "gray"
+            }),
+            f"$$$amount%,.2f"
+          )
         }
       ).filtering(t => t.amount, State.lensAmountFilters)(
         List(
