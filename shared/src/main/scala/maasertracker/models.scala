@@ -66,13 +66,13 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
                             startingMaaserBalance: Double,
                             matchers: Matchers,
                             errors: Map[String, Seq[PlaidError]]) {
-  def matches(tx: Transaction, matcher: TransactionMatcher) =
+  private def matches(tx: Transaction, matcher: TransactionMatcher) =
     matcher.id.forall(_ == tx.transactionId) &&
       matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
       matcher.description.forall(_.trim == tx.name.trim) &&
       matcher.category.forall(tx.category.startsWith(_)) &&
-      matcher.minAmount.forall(tx.amount > _) &&
-      matcher.maxAmount.forall(tx.amount < _)
+      matcher.minAmount.forall(tx.amount >= _) &&
+      matcher.maxAmount.forall(tx.amount <= _)
 
   def combineTransfers = {
     def canBeTransfer(tx: Transaction) = matchers.transfer.exists(matches(tx, _))
@@ -148,7 +148,7 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
   def sorted =
     copy(transactions = transactions.sortBy {
       case Left(Transfer(withdrawal, deposit)) => (withdrawal.date min deposit.date) -> None
-      case Right(value)                        => value.date                        -> tags.get(value.transactionId)
+      case Right(value)                        => value.date                         -> tags.get(value.transactionId)
     })
 
   def untilLastMaaserPayment = {
