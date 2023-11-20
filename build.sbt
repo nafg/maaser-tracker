@@ -14,8 +14,8 @@ inThisBuild(
   )
 )
 
-val CirceVersion          = "0.14.3"
-val SlickAdditionsVersion = "0.12.0"
+val CirceVersion          = "0.14.6"
+val SlickAdditionsVersion = "0.12.1"
 
 val migrations = project
   .enablePlugins(SlickFlywayPlugin)
@@ -39,8 +39,8 @@ commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::web
 
 lazy val start = TaskKey[Unit]("start")
 
-val Http4sVersion  = "0.23.16"
-val LogbackVersion = "1.4.1"
+val Http4sVersion  = "0.23.24"
+val LogbackVersion = "1.4.11"
 
 //noinspection ScalaUnusedSymbol,ScalaWeakerAccess
 val jvm = project
@@ -55,17 +55,17 @@ val jvm = project
     }.value,
     Compile / mainClass := Some("maasertracker.server.PlaidHttp4sServer"),
     libraryDependencies ++= Seq(
-      "org.http4s"         %% "http4s-ember-server" % Http4sVersion,
-      "org.http4s"         %% "http4s-ember-client" % Http4sVersion,
-      "org.http4s"         %% "http4s-circe"        % Http4sVersion,
-      "org.http4s"         %% "http4s-dsl"          % Http4sVersion,
-      "com.plaid"           % "plaid-java"          % "12.0.0",
-      "org.flywaydb"        % "flyway-core"         % "9.3.1",
-      "io.github.nafg"     %% "slick-additions"     % SlickAdditionsVersion,
-      "com.typesafe.slick" %% "slick-hikaricp"      % "3.4.1",
-      "org.postgresql"      % "postgresql"          % "42.5.0",
-      "org.scala-lang"      % "scala-reflect"       % scalaVersion.value,
-      "ch.qos.logback"      % "logback-classic"     % LogbackVersion
+      "org.http4s"         %% "http4s-ember-server"        % Http4sVersion,
+      "org.http4s"         %% "http4s-ember-client"        % Http4sVersion,
+      "org.http4s"         %% "http4s-circe"               % Http4sVersion,
+      "org.http4s"         %% "http4s-dsl"                 % Http4sVersion,
+      "com.plaid"           % "plaid-java"                 % "18.0.0",
+      "org.flywaydb"        % "flyway-database-postgresql" % "10.0.1",
+      "io.github.nafg"     %% "slick-additions"            % SlickAdditionsVersion,
+      "com.typesafe.slick" %% "slick-hikaricp"             % "3.4.1",
+      "org.postgresql"      % "postgresql"                 % "42.6.0",
+      "org.scala-lang"      % "scala-reflect"              % scalaVersion.value,
+      "ch.qos.logback"      % "logback-classic"            % LogbackVersion
     ),
     slickConfig         := (migrations / slickConfig).value,
     slickMetaGenRules   := new MyGenerationRules("tables", "Tables")("maasertracker.generated.models._"),
@@ -82,9 +82,9 @@ val js = project
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "dev.optics"                        %%% "monocle-macro"      % "3.1.0",
+      "dev.optics"                        %%% "monocle-macro"      % "3.2.0",
       "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % "2.1.1",
-      "io.github.cquiroz"                 %%% "scala-java-time"    % "2.4.0",
+      "io.github.cquiroz"                 %%% "scala-java-time"    % "2.5.0",
       "com.nrinaudo"                      %%% "kantan.csv"         % "0.7.0"
     ),
     Compile / npmDependencies ++= Seq(

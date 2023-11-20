@@ -6,7 +6,7 @@ import slick.jdbc.DataSourceJdbcDataSource
 import slick.jdbc.hikaricp.HikariCPJdbcDataSource
 
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.implicits.{catsSyntaxApplicativeError, toSemigroupKOps}
+import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
 import com.plaid.client.model.{ItemRemoveRequest, Products}
 import io.circe.syntax.*
@@ -24,7 +24,6 @@ import org.http4s.server.Router
 import org.http4s.server.middleware.Logger
 import org.http4s.server.staticcontent.*
 import org.http4s.{HttpRoutes, Response}
-
 
 object PlaidHttp4sServer extends IOApp {
   case class ResponseFailed(errorBody: okhttp3.Response) extends RuntimeException
