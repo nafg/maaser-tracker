@@ -9,8 +9,8 @@ import japgolly.scalajs.react.{React, facade}
 import maasertracker.{Transaction, TransactionsInfo, Transfer}
 import monocle.Lens
 import typings.antd.antdStrings.tree
-import typings.antd.tableInterfaceMod.{ColumnType, FilterValue}
-import typings.rcTable.interfaceMod.RenderedCell
+import typings.antd.libTableInterfaceMod.{ColumnType, FilterValue}
+import typings.rcTable.libInterfaceMod.RenderedCell
 import typings.std.Record
 
 trait BaseColType {

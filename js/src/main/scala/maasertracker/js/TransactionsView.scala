@@ -20,9 +20,9 @@ import monocle.Iso
 import monocle.macros.GenLens
 import typings.antd.anon.ScrollToFirstRowOnChange
 import typings.antd.antdStrings.small
-import typings.antd.cardMod.CardSize
 import typings.antd.components.{Button, Card, Col, Dropdown, Layout, Menu, Row, Space, Table, Tooltip}
-import typings.antd.tooltipMod.TooltipPropsWithTitle
+import typings.antd.libCardMod.CardSize
+import typings.antd.libTooltipMod.TooltipPropsWithTitle
 import typings.antd.{antdBooleans, antdStrings}
 import typings.rcTable
 import typings.react.mod.{CSSProperties, RefAttributes}

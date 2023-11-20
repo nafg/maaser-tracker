@@ -5,7 +5,7 @@ import scala.scalajs.js.|
 
 import japgolly.scalajs.react.vdom.html_<^.*
 
-import typings.antd.tableInterfaceMod.ColumnFilterItem
+import typings.antd.libTableInterfaceMod.ColumnFilterItem
 
 case class FilterItem[A](test: A => Boolean,
                          text: String,
