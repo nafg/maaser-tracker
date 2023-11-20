@@ -1,18 +1,17 @@
 package maasertracker.js
 
 import scala.scalajs.js.JSConverters.JSRichIterableOnce
-import scala.scalajs.js.|
 
 import japgolly.scalajs.react.vdom.html_<^.*
-
-import typings.antd.libTableInterfaceMod.ColumnFilterItem
+import io.github.nafg.antd.facade.antd.libTableInterfaceMod.ColumnFilterItem
 
 case class FilterItem[A](test: A => Boolean,
                          text: String,
                          children: Seq[FilterItem[A]] = Nil,
                          hideTransfers: Boolean = false) {
   def toAnt(filterItems: FilterItems[A]): ColumnFilterItem = {
-    val item = ColumnFilterItem(filterItems.toKey(this)).setText(text)
+    val value = filterItems.toKey(this)
+    val item  = ColumnFilterItem(value).setText(text)
     if (children.isEmpty)
       item
     else
@@ -21,9 +20,7 @@ case class FilterItem[A](test: A => Boolean,
 }
 
 case class FilterItems[A](items: Iterable[FilterItem[A]]) {
-  type FilterValueType = String | Double | Boolean
-
-  private def mkKeys(items: Iterable[FilterItem[A]]): Map[FilterItem[A], FilterValueType] =
+  private def mkKeys(items: Iterable[FilterItem[A]]): Map[FilterItem[A], String] =
     items.zipWithIndex
       .flatMap { case (item, n) =>
         Map(item -> n.toString) ++

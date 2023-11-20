@@ -5,13 +5,13 @@ import scala.scalajs.js.|
 
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{React, facade}
+import io.github.nafg.antd.facade.antd.antdStrings.tree
+import io.github.nafg.antd.facade.antd.libTableInterfaceMod.{ColumnType, FilterValue}
+import io.github.nafg.antd.facade.rcTable.libInterfaceMod.RenderedCell
+import io.github.nafg.antd.facade.std.Record
 
 import maasertracker.{Transaction, TransactionsInfo, Transfer}
 import monocle.Lens
-import typings.antd.antdStrings.tree
-import typings.antd.libTableInterfaceMod.{ColumnType, FilterValue}
-import typings.rcTable.libInterfaceMod.RenderedCell
-import typings.std.Record
 
 trait BaseColType {
   def key: String
@@ -66,8 +66,8 @@ case class FilteringColType[A](colType: ColType,
       .setFilterMode(tree)
       .setFilteredValue(lens.get(state).toJSArray.map(filterItems.toKey))
       .setFilters(filterItems.items.map(_.toAnt(filterItems)).toJSArray)
-      .setOnFilter { (value: filterItems.FilterValueType, item) =>
-        val filter = filterItems.fromKey(value)
+      .setOnFilter { (value, item) =>
+        val filter = filterItems.fromKey(value.toString)
         item.fold(
           t =>
             !filter.hideTransfers &&
@@ -80,13 +80,11 @@ case class FilteringColType[A](colType: ColType,
     lens.replace(
       filters.get(key)
         .flatMap(nullableToOption)
-        .map(_.map(filterItems.fromKey(_)).toSet)
+        .map(_.map(key => filterItems.fromKey(key.toString)).toSet)
         .getOrElse(Set.empty)
     )(state)
 
-  def stateToKeys(state: TransactionsView.State) =
-    lens.get(state).map(filterItems.toKey)
+  def stateToKeys(state: TransactionsView.State) = lens.get(state).map(filterItems.toKey)
 
-  def keysToState(keys: Iterable[String]) =
-    lens.replace(keys.flatMap(filterItems.fromKey.get(_)).toSet)
+  def keysToState(keys: Iterable[String]) = lens.replace(keys.flatMap(filterItems.fromKey.get(_)).toSet)
 }

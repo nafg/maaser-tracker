@@ -74,9 +74,9 @@ val jvm = project
 
 //noinspection ScalaUnusedSymbol,ScalaWeakerAccess
 val js = project
-  .enablePlugins(ScalablyTypedConverterPlugin).dependsOn(shared.js)
+  .enablePlugins(ScalaJSBundlerPlugin)
+  .dependsOn(shared.js)
   .settings(
-    stFlavour                       := Flavour.ScalajsReact,
     useYarn                         := false,
     autoImport.webpackDevServerPort := 8081,
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
@@ -85,16 +85,13 @@ val js = project
       "dev.optics"                        %%% "monocle-macro"      % "3.2.0",
       "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % "2.1.1",
       "io.github.cquiroz"                 %%% "scala-java-time"    % "2.5.0",
-      "com.nrinaudo"                      %%% "kantan.csv"         % "0.7.0"
+      "com.nrinaudo"                      %%% "kantan.csv"         % "0.7.0",
+      "io.github.nafg.antd"               %%% "antd-scalajs-react" % "0.0.1"
     ),
     Compile / npmDependencies ++= Seq(
-      "react"             -> "17.0.2",
-      "react-dom"         -> "17.0.2",
-      "@types/react"      -> "17.0.43",
-      "@types/react-dom"  -> "17.0.14",
-      "csstype"           -> "3.0.11",
-      "@types/prop-types" -> "15.7.4",
-      "antd"              -> "4.17.3"
+      "react"     -> "17.0.2",
+      "react-dom" -> "17.0.2",
+      "csstype"   -> "3.0.11"
     ),
     webpackConfigFile               := Some(baseDirectory.value / "custom.webpack.config.js"),
     webpack / version               := "5.89.0",

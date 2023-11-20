@@ -11,6 +11,25 @@ import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
+import io.github.nafg.antd.facade.antd.anon.ScrollToFirstRowOnChange
+import io.github.nafg.antd.facade.antd.antdStrings.small
+import io.github.nafg.antd.facade.antd.components.{
+  Button,
+  Card,
+  Col,
+  Dropdown,
+  Layout,
+  Menu,
+  Row,
+  Space,
+  Table,
+  Tooltip
+}
+import io.github.nafg.antd.facade.antd.libCardMod.CardSize
+import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipPropsWithTitle
+import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
+import io.github.nafg.antd.facade.rcTable
+import io.github.nafg.antd.facade.react.mod.{CSSProperties, RefAttributes}
 
 import io.circe.syntax.EncoderOps
 import kantan.csv.ops.*
@@ -18,14 +37,6 @@ import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
 import monocle.Iso
 import monocle.macros.GenLens
-import typings.antd.anon.ScrollToFirstRowOnChange
-import typings.antd.antdStrings.small
-import typings.antd.components.{Button, Card, Col, Dropdown, Layout, Menu, Row, Space, Table, Tooltip}
-import typings.antd.libCardMod.CardSize
-import typings.antd.libTooltipMod.TooltipPropsWithTitle
-import typings.antd.{antdBooleans, antdStrings}
-import typings.rcTable
-import typings.react.mod.{CSSProperties, RefAttributes}
 
 object TransactionsView {
   def accountNameParts(acct: AccountInfo) = {
