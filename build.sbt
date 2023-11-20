@@ -20,7 +20,7 @@ val SlickAdditionsVersion = "0.12.1"
 val migrations = project
   .enablePlugins(SlickFlywayPlugin)
   .settings(
-    slickConfig := SlickConfigPlugin.load(file("jvm/src/main/resources/reference.conf"))
+    slickConfig := SlickConfigPlugin.load(file("jvm/src/main/resources"))
   )
 
 val shared = crossProject(JVMPlatform, JSPlatform)
