@@ -97,14 +97,13 @@ val js = project
       "antd"              -> "4.17.3"
     ),
     webpackConfigFile               := Some(baseDirectory.value / "custom.webpack.config.js"),
+    webpack / version               := "5.89.0",
+    startWebpackDevServer / version := "4.15.1",
+    webpackCliVersion               := "4.10.0",
     Compile / npmDevDependencies ++= Seq(
-      "webpack-merge" -> "5.8.0",
-      "css-loader"    -> "5.2.7",
-      "less-loader"   -> "7.3.0",
-      "less"          -> "4.1.2",
-      "style-loader"  -> "2.0.0",
-      "file-loader"   -> "6.2.0",
-      "url-loader"    -> "4.1.1"
+      "css-loader"   -> "6.8.1",
+      "less-loader"  -> "11.1.3",
+      "style-loader" -> "3.3.3"
     ),
     start                           := {
       (Compile / fastOptJS / startWebpackDevServer).value

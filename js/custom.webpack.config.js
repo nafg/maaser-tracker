@@ -27,8 +27,7 @@ const local = {
                 target: 'http://localhost:9090',
                 pathRewrite: {'^/api': ''}
             }
-        },
-        disableHostCheck: true
+        }
     }
 };
 
