@@ -19,6 +19,14 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: maasertracker
+          POSTGRES_USER: maasertracker
+          POSTGRES_PASSWORD: "1234"
+
     steps:
     - uses: actions/checkout@v3
     - name: Set up JDK 11
@@ -28,7 +36,7 @@ jobs:
         distribution: 'temurin'
         cache: 'sbt'
     - name: Run tests
-      run: sbt -mem 2048 test
+      run: sbt -mem 2048 -Ddb.slick.properties.portNumber=5432 -Ddb.slick.properties.serverName=postgres test
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
     - name: Upload dependency graph
       uses: scalacenter/sbt-dependency-submission@ab086b50c947c9774b70f39fc7f6e20ca2706c91
