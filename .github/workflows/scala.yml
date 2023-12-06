@@ -26,6 +26,11 @@ jobs:
           POSTGRES_DB: maasertracker
           POSTGRES_USER: maasertracker
           POSTGRES_PASSWORD: "1234"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v3
