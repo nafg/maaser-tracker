@@ -1,0 +1,18 @@
+{
+  "name": "Scala Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "service": "db",
+  "dockerComposeFile": "../docker-compose.yml",
+  "extensions": [
+    "scalameta.metals",
+    "scalameta.scalameta",
+    "scalameta.sbt",
+    "scalameta.scalafmt"
+  ],
+  "settings": {
+    "scalameta.scalafmt.configPath": "../.scalafmt.conf"
+  }
+}
