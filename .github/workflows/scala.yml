@@ -38,6 +38,7 @@ jobs:
       uses: olafurpg/setup-scala@v10
       with:
         sbt-version: 1.10.6
+        java-version: adopt@1.11
     - name: Run tests
       env:
         MAASERTRACKER_DB_PORT: 5432
