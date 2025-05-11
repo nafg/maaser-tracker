@@ -35,15 +35,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up SBT
-      uses: olafurpg/setup-scala@v10
+      uses: olafurpg/setup-scala@v14
       with:
-        sbt-version: 1.10.6
         java-version: adopt@1.11
     - name: Run tests
       env:
         MAASERTRACKER_DB_PORT: 5432
         MAASERTRACKER_DB_HOST: postgres
-      run: sbt -mem 2048 test
+      run: sbt test
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
     - name: Upload dependency graph
       uses: scalacenter/sbt-dependency-submission@ab086b50c947c9774b70f39fc7f6e20ca2706c91
