@@ -105,7 +105,10 @@ object PlaidHttp4sServer extends IOApp {
             ).toIO
           res            <- Ok()
         } yield res)
-          .handleErrorWith(t => InternalServerError(t.getLocalizedMessage))
+          .handleErrorWith { t =>
+            t.printStackTrace()
+            InternalServerError(t.getLocalizedMessage)
+          }
       case GET -> Root / "transactions"           =>
         for {
           items            <- loadItems.toIO
@@ -114,13 +117,19 @@ object PlaidHttp4sServer extends IOApp {
         } yield res
     }
 
-    (router <+> routes).orNotFound
+    (router <+> routes)
+      .orNotFound
   }
 
   def app =
     EmberServerBuilder.default[IO]
       .withHost(host"0.0.0.0")
       .withPort(port"9090")
+      .withErrorHandler {
+        case t =>
+          t.printStackTrace()
+          InternalServerError(t.getLocalizedMessage)
+      }
       .withHttpApp(
         Logger.httpApp(logHeaders = true, logBody = false)(
           httpApp(new PlaidService(plaidApi))

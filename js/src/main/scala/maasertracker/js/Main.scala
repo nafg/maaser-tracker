@@ -34,7 +34,10 @@ object Main {
         val state      = State(info = info, items = items, categories = categories.toSeq)
         setState(Right(state))
       }
-      .handleErrorSync(t => setState(Left(t.toString)))
+      .handleErrorSync { t =>
+        t.printStackTrace()
+        setState(Left(t.toString))
+      }
       .toCallback
 
   val component =
