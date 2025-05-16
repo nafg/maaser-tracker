@@ -13,3 +13,16 @@ services:
       - ./docker/.pgdata:/var/lib/postgresql/data
     logging:
       driver: local
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      MAASERTRACKER_DB_PORT: 5432
+      MAASERTRACKER_DB_HOST: db
