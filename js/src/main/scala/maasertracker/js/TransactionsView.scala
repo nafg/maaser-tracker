@@ -26,6 +26,7 @@ import io.github.nafg.antd.facade.antd.components.{
   Tooltip
 }
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
+import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipPropsWithTitle
 import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
 import io.github.nafg.antd.facade.rcTable
@@ -182,60 +183,79 @@ object TransactionsView {
               }
             }
 
+        implicit val headerEncoder: HeaderEncoder[Transaction] = new HeaderEncoder[Transaction] {
+          override val header: Option[Seq[String]] =
+            Some(
+              List(
+                "Institution",
+                "Account",
+                "Account type",
+                "Date",
+                "Transaction ID",
+                "Description",
+                "Amount",
+                "Debit or Credit",
+                "Category",
+                "Type",
+                "Tag"
+              )
+            )
+
+          override val rowEncoder: RowEncoder[Transaction] = { (d: Transaction) =>
+            val accountInfo = state.info.accounts(d.accountId)
+            List(
+              accountInfo.institution.name,
+              accountInfo.account.name,
+              accountInfo.account.subtype,
+              d.date.toString,
+              d.transactionId,
+              d.name,
+              d.amount.abs.toString,
+              if (d.amount > 0) "debit" else "credit",
+              d.category.mkString(" / "),
+              d.transactionType,
+              state.info.tags.get(d.transactionId).fold("")(t => t.toString)
+            )
+          }
+        }
+
+        case class DownloadOption(institution: Option[Institution])
+        val downloadOptions = state.items.map(item => DownloadOption(Some(item.institution))) :+ DownloadOption(None)
+
         val downloadItemMenu =
-          Menu(state.items.toTagMod(item => Menu.Item.withKey(item.itemId)(<.a(item.institution.name))))
-            .onClick { menuInfo =>
-              Callback.traverseOption(state.items.find(_.itemId == menuInfo.key)) { item =>
-                Callback {
-                  val transactions                                       =
+          Menu(downloadOptions.toReactFragment { option =>
+            Menu.Item.withProps(MenuItemProps().setOnClick { menuInfo =>
+              val transactions =
+                option.institution match {
+                  case None              => state.info.transactions.flatMap(_.toOption).sortBy(_.date)
+                  case Some(institution) =>
                     state.info.transactions.flatMap(_.fold(_.toSeq, Seq(_)))
                       .filter { tx =>
-                        state.info.accounts(tx.accountId).institution.institution_id == item.institution.institution_id
+                        state.info.accounts(tx.accountId).institution.institution_id == institution.institution_id
                       }
                       .sortBy(_.date)
-                  val sw                                                 = new StringWriter()
-                  implicit val headerEncoder: HeaderEncoder[Transaction] = new HeaderEncoder[Transaction] {
-                    override val header =
-                      Some(
-                        List(
-                          "Account ID",
-                          "Date",
-                          "Transaction ID",
-                          "Description",
-                          "Amount",
-                          "Debit or Credit",
-                          "Category",
-                          "Type"
-                        )
-                      )
-
-                    override val rowEncoder: RowEncoder[Transaction] = { (d: Transaction) =>
-                      List(
-                        d.accountId,
-                        d.date.toString,
-                        d.transactionId,
-                        d.name,
-                        d.amount.abs.toString,
-                        if (d.amount > 0) "debit" else "credit",
-                        d.category.mkString(" / "),
-                        d.transactionType
-                      )
-                    }
-                  }
-                  sw.writeCsv(transactions, rfc.withHeader)
-                  val a = dom.window.document.createElement("a").asInstanceOf[HTMLAnchorElement]
-                  a.href =
-                    URL.createObjectURL(new Blob(
-                      js.Array(sw.toString),
-                      new BlobPropertyBag {
-                        `type` = "text/csv;charset=utf-8"
-                      }
-                    ))
-                  a.setAttribute("download", item.institution.name + ".csv")
-                  a.click()
                 }
+
+              Callback {
+                val sw = new StringWriter()
+                sw.writeCsv(transactions, rfc.withHeader)
+                val a  = dom.window.document.createElement("a").asInstanceOf[HTMLAnchorElement]
+                a.href =
+                  URL.createObjectURL(new Blob(
+                    js.Array(sw.toString),
+                    new BlobPropertyBag {
+                      `type` = "text/csv;charset=utf-8"
+                    }
+                  ))
+                a.setAttribute("download", option.institution.fold("all")(_.name) + ".csv")
+                a.click()
               }
-            }
+            })(
+              <.a(
+                option.institution.fold("All - no transfers")(_.name)
+              )
+            )
+          })
 
         Layout.style(CSSProperties().setPadding("24px 24px"))(
           Layout.Content(
