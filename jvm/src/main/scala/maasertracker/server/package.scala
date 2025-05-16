@@ -15,7 +15,7 @@ package object server {
   lazy val plaidApi = {
     val config = ConfigFactory.defaultApplication().getConfig("plaid")
     new ApiClient(util.Map.of("clientId", config.getString("clientId"), "secret", config.getString("secret")))
-      .tap(_.setPlaidAdapter(ApiClient.Development))
+      .tap(_.setPlaidAdapter(ApiClient.Production))
       .createService(classOf[PlaidApi])
   }
 

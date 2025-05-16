@@ -63,7 +63,7 @@ object TransactionsView {
 
     Plaid.create(
       new PlaidCreateParam {
-        override val env       = "development"
+        override val env       = "production"
         override val product   = js.Array("transactions")
         override val token     = tokenParam
         override val onSuccess =

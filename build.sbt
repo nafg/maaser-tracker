@@ -59,7 +59,7 @@ val jvm = project
       "org.http4s"         %% "http4s-ember-client"        % Http4sVersion,
       "org.http4s"         %% "http4s-circe"               % Http4sVersion,
       "org.http4s"         %% "http4s-dsl"                 % Http4sVersion,
-      "com.plaid"           % "plaid-java"                 % "18.0.0",
+      "com.plaid"           % "plaid-java"                 % "32.0.0",
       "org.flywaydb"        % "flyway-database-postgresql" % "10.0.1",
       "io.github.nafg"     %% "slick-additions"            % SlickAdditionsVersion,
       "com.typesafe.slick" %% "slick-hikaricp"             % "3.4.1",

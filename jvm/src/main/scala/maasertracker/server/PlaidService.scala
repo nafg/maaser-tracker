@@ -28,6 +28,7 @@ final class PlaidService(val plaidApi: PlaidApi) {
           .products(products.asJava)
           .countryCodes(List(CountryCode.US).asJava)
           .language("en")
+          .transactions(new LinkTokenTransactions().daysRequested(730))
       )
     )
 
