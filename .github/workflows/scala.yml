@@ -26,6 +26,8 @@ jobs:
           POSTGRES_DB: maasertracker
           POSTGRES_USER: maasertracker
           POSTGRES_PASSWORD: "1234"
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -41,7 +43,9 @@ jobs:
     - name: Run tests
       env:
         MAASERTRACKER_DB_PORT: 5432
-        MAASERTRACKER_DB_HOST: postgres
+        MAASERTRACKER_DB_HOST: localhost
+        MAASERTRACKER_DB_USER: maasertracker
+        MAASERTRACKER_DB_PASSWORD: "1234"
       run: sbt test
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
     - name: Upload dependency graph
