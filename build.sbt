@@ -97,6 +97,7 @@ val js = project
     webpack / version               := "5.89.0",
     startWebpackDevServer / version := "4.15.1",
     webpackCliVersion               := "4.10.0",
+    Test / npmDependencies          := Seq(),
     Compile / npmDevDependencies ++= Seq(
       "css-loader"   -> "6.8.1",
       "less-loader"  -> "11.1.3",
