@@ -366,7 +366,7 @@ object TransactionsView {
     } { state =>
       props.filterColTypes
         .map { filteringColType =>
-          filteringColType.key -> filteringColType.stateToKeys(state).map(_.toString).toSeq
+          filteringColType.key -> filteringColType.stateToKeys(state).toSeq
         }
         .toMap
     }
