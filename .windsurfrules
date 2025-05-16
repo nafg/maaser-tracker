@@ -1,0 +1,125 @@
+# Maaser Tracker - AI Assistant Guidelines
+
+## Project Overview
+Maaser Tracker is a Scala.js application for tracking Maaser (Jewish tithing) obligations. See README.md for a complete overview of the project architecture and technologies.
+
+## Technology Stack Specifics
+
+### Scala Version and Compatibility
+- Scala 2.13.8 is used throughout the project
+- `-Xsource:3` compiler flag enables some Scala 3 features
+- Be careful with library recommendations - ensure they're compatible with Scala 2.13
+
+### Cross-Project Structure
+- This is a cross-project (JVM/JS) using Scala.js
+- Shared code is in `shared/` and must compile for both platforms
+- Backend-specific code is in `jvm/`
+- Frontend-specific code is in `js/`
+
+## Common Development Tasks
+
+### Database Schema and Models
+1. Database schema is defined in migration files in `migrations/src/main/resources/db/migration/`
+2. The build system uses source generators (defined in `build.sbt`) to automatically:
+   - Generate case classes (e.g., `MatchRuleRow`) in `shared/.jvm/target/scala-2.13/src_managed/main/models.scala`
+   - Generate Slick entity table modules (e.g., `MatchRuleTable`) in `jvm/target/scala-2.13/src_managed/main/Tables.scala`
+3. To add or modify database entities:
+   - Create/update the table definition in a migration file
+   - Run `sbt migrations/flywayMigrate` to apply the migration
+   - Run `sbt compile` to trigger the code generation
+   - The generated code will be available to use in your application
+
+### Adding a New Model
+1. The `shared/src/main/scala/maasertracker/models.scala` file contains application domain models, not direct database entity mappings
+2. These models are used for business logic and API communication
+3. Use `@JsonCodec` for automatic Circe codec derivation
+
+### Adding a New API Endpoint
+1. Modify `jvm/src/main/scala/maasertracker/server/PlaidHttp4sServer.scala`
+2. Add a new route to the `routes` HttpRoutes object
+3. Use the standard Http4s DSL pattern for defining routes
+
+### Making Frontend Changes
+1. UI components are in `js/src/main/scala/maasertracker/js/`
+2. The project uses Ant Design via `antd-scalajs-react`
+3. Run `sbt '~; js/fastOptJS/startWebpackDevServer; js/fastOptJS/webpack'` to see changes in real-time
+
+## Troubleshooting
+
+### Database Connection Issues
+- Check Neon database connection parameters in `jvm/src/main/resources/application.conf`
+- Verify SSL settings - Neon requires SSL connections (sslmode=require)
+- Connection pooling is handled by HikariCP via Slick
+
+### Plaid API Issues
+- Plaid credentials are in `jvm/src/main/resources/application.conf`
+- The application is configured for Plaid Production environment
+- Check for expired tokens or authentication issues in server logs
+
+## Testing
+
+- No formal test suite is currently implemented
+- Manual testing is the primary verification method
+- Verification should focus on:
+  - Transaction categorization accuracy
+  - Maaser calculation correctness
+  - Plaid API integration
+
+## Code Conventions
+
+### Functional Style
+- Favor immutable data structures
+- Use `cats` and functional programming patterns
+- Prefer `Option` over null values
+
+### File Organization
+- Keep related functionality in the same file
+- Cross-platform code goes in `shared/`
+- Follow existing package structure
+
+## Common Terminal Commands
+
+```bash
+# Start the backend server with auto-reloading
+sbt ~jvm/reStart
+
+# Start the frontend development server
+sbt '~; js/fastOptJS/startWebpackDevServer; js/fastOptJS/webpack'
+
+# Apply database migrations
+sbt migrations/flywayMigrate
+
+# Package the application
+sbt jvm/universal:packageBin
+
+# Combined development command (backend + frontend)
+sbt dev
+```
+
+Note: While the project includes a `.tmuxp.yaml` configuration file, it's not recommended to use this with AI assistants. Instead, use the individual commands above or the combined `sbt dev` command.
+
+## Project Dependencies Management
+- New dependencies should be added to the appropriate project in `build.sbt`
+- Frontend JS dependencies go in `npmDependencies` or `npmDevDependencies`
+- Scala dependencies use standard SBT format
+
+## Version Control Practices
+
+### Commit Frequency
+- AI assistants should make **frequent commits** when making changes to the codebase
+- Each commit should represent a logical, self-contained change
+- Don't wait until the end of a large task to commit - break it down into smaller, incremental commits
+- This makes changes easier to review, understand, and revert if needed
+
+### Commit Message Guidelines
+- Write clear, descriptive commit messages
+- Use the imperative mood (e.g., "Add feature" not "Added feature")
+- Structure messages as:
+  - A short summary line (50 chars or less)
+  - A blank line
+  - A more detailed explanation if necessary
+
+### Branching
+- Create feature branches for substantial changes
+- Branch names should be descriptive of the feature or fix being implemented
+- Use kebab-case for branch names (e.g., `add-plaid-institution-management`)
