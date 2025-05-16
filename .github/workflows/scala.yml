@@ -46,7 +46,7 @@ jobs:
         MAASERTRACKER_DB_HOST: localhost
         MAASERTRACKER_DB_USER: maasertracker
         MAASERTRACKER_DB_PASSWORD: "1234"
-      run: sbt test
+      run: sbt "migrations/flywayMigrate; test"
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
     - name: Upload dependency graph
       uses: scalacenter/sbt-dependency-submission@ab086b50c947c9774b70f39fc7f6e20ca2706c91
