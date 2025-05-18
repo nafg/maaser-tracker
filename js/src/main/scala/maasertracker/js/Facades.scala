@@ -1,16 +1,23 @@
 package maasertracker.js
 
+import scala.scalajs.*
+import scala.scalajs.js.JSConverters.JSRichIterableOnce
 import scala.scalajs.js.|
 
 import org.scalajs.dom.HTMLElement
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, ReactMouseEventFrom}
+import io.github.nafg.antd.facade.antd.anon.ScrollToFirstRowOnChange
 import io.github.nafg.antd.facade.antd.libButtonButtonMod.ButtonType
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
+import io.github.nafg.antd.facade.antd.libConfigProviderSizeContextMod.SizeType
 import io.github.nafg.antd.facade.antd.libGridColMod.FlexType
+import io.github.nafg.antd.facade.antd.libTableInterfaceMod.*
 import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipProps
-import io.github.nafg.antd.facade.antd.{antdStrings, components as A}
+import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings, components as A}
+import io.github.nafg.antd.facade.rcTable
 import io.github.nafg.antd.facade.react.mod.{CSSProperties, RefAttributes}
+import io.github.nafg.antd.facade.std.Record
 
 object Facades {
   object Ant {
@@ -51,6 +58,40 @@ object Facades {
       A.Space
         .apply(content*)
         .direction(direction)
+
+    object Table {
+      case class ScrollConfig(x: js.UndefOr[String] = js.undefined,
+                              y: js.UndefOr[String] = js.undefined,
+                              scrollToFirstRowOnChange: js.UndefOr[Boolean] = js.undefined)
+
+      def apply[A](dataSource: Seq[A])(
+          columns: Seq[ColumnGroupType[A] | ColumnType[A]],
+          onChange: (TablePaginationConfig,
+                     Record[String, FilterValue | Null],
+                     SorterResult[A] | js.Array[SorterResult[A]],
+                     TableCurrentDataSource[A]) => Callback,
+          pagination: TablePaginationConfig | antdBooleans.`false` = null,
+          rowClassName: (A, Int) => String,
+          rowKey: A => String,
+          scroll: js.UndefOr[ScrollConfig] = js.undefined,
+          size: SizeType
+      ): VdomElement =
+        A.Table[A]()
+          .dataSource(dataSource.toJSArray)
+          .columns(columns.toJSArray)
+          .onChange(onChange)
+          .pagination(pagination)
+          .rowClassNameFunction3 { case (a, index, _) => rowClassName(a, index.toInt) }
+          .rowKeyFunction2 { case (a, _) => rowKey(a) }
+          .scroll(
+            scroll
+              .map { case ScrollConfig(x, y, scrollToFirstRowOnChange) =>
+                js.Dynamic.literal(x = x, y = y, scrollToFirstRowOnChange = scrollToFirstRowOnChange)
+              }
+              .asInstanceOf[js.UndefOr[rcTable.anon.X] & ScrollToFirstRowOnChange]
+          )
+          .size(size)
+    }
 
     def Tooltip(title: VdomNode)(children: VdomNode) =
       A.Tooltip

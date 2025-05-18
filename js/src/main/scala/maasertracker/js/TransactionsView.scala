@@ -11,13 +11,11 @@ import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
-import io.github.nafg.antd.facade.antd.anon.ScrollToFirstRowOnChange
 import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu, Table}
+import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu}
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
-import io.github.nafg.antd.facade.rcTable
 import io.github.nafg.antd.facade.react.mod.CSSProperties
 
 import io.circe.syntax.EncoderOps
@@ -312,13 +310,8 @@ object TransactionsView {
                     )
                   )
                 ),
-                Table[TransactionsInfo.Item]()
-                  .pagination(antdBooleans.`false`)
-                  .dataSource(state.info.transactions.toJSArray)
-                  .onChange { case (_, filters, _, _) =>
-                    routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
-                  }
-                  .columnsVarargs(
+                Ant.Table(state.info.transactions)(
+                  columns =
                     List(
                       props.dateColType,
                       props.accountColType,
@@ -329,25 +322,26 @@ object TransactionsView {
                       props.tagColType,
                       props.maaserBalanceColType
                     )
-                      .map(_.toAnt(state1))*
-                  )
-                  .size(small)
-                  .scroll(
-                    js.Dynamic.literal(y = "calc(100vh - 156px)")
-                      .asInstanceOf[js.UndefOr[rcTable.anon.X] & ScrollToFirstRowOnChange]
-                  )
-                  .rowClassNameFunction3 {
-                    case (Right(tx), _, _) =>
+                      .map(_.toAnt(state1)),
+                  onChange = { case (_, filters, _, _) =>
+                    routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
+                  },
+                  pagination = antdBooleans.`false`,
+                  rowClassName = {
+                    case (Right(tx), _) =>
                       state.info.tags.get(tx.transactionId) match {
                         case None      => ""
                         case Some(tag) => "tag-" + tag.toString
                       }
-                    case _                 => ""
-                  }
-                  .rowKeyFunction2 {
-                    case (Right(tx), _)                => tx.transactionId
-                    case (Left(Transfer(tx1, tx2)), _) => tx1.transactionId + "->" + tx2.transactionId
-                  }
+                    case _              => ""
+                  },
+                  rowKey = {
+                    case Right(tx)                => tx.transactionId
+                    case Left(Transfer(tx1, tx2)) => tx1.transactionId + "->" + tx2.transactionId
+                  },
+                  scroll = Ant.Table.ScrollConfig(y = "calc(100vh - 156px)"),
+                  size = small
+                )
               )
             )
           )
