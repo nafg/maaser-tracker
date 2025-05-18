@@ -6,7 +6,7 @@ import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichIterableOnce
 
 import org.scalajs.dom
-import org.scalajs.dom.{Blob, BlobPropertyBag, HTMLAnchorElement, URL}
+import org.scalajs.dom.*
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -36,6 +36,7 @@ import io.circe.syntax.EncoderOps
 import kantan.csv.ops.*
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
+import maasertracker.js.Facades.AntButton
 import monocle.Iso
 import monocle.macros.GenLens
 
@@ -265,45 +266,44 @@ object TransactionsView {
                   Col.flex(antdStrings.auto)(
                     Card.size(CardSize.small)(
                       Space(
-                        Button
-                          .`type`(antdStrings.primary)("Add bank")
-                          .onClick { _ =>
-                            ajax[String]("/api/plaid-link-token").flatMapSync { plaidLinkToken =>
-                              def doAdd(publicToken: String, institution: Institution) =
-                                Ajax
-                                  .post("/api/items")
-                                  .send(AddItemRequest(publicToken, institution).asJson.spaces4)
-                                  .asAsyncCallback
-                                  .flatMapSync(_ => props.refresh)
+                        AntButton("Add bank", buttonType = antdStrings.primary) { _ =>
+                          ajax[String]("/api/plaid-link-token").flatMapSync { plaidLinkToken =>
+                            def doAdd(publicToken: String, institution: Institution) =
+                              Ajax
+                                .post("/api/items")
+                                .send(AddItemRequest(publicToken, institution).asJson.spaces4)
+                                .asAsyncCallback
+                                .flatMapSync(_ => props.refresh)
 
-                              Callback {
-                                makePlaid(plaidLinkToken) { (publicToken, metadata) =>
-                                  doAdd(
-                                    publicToken,
-                                    io.circe.scalajs.decodeJs[Institution](metadata.institution).toTry.get
-                                  )
-                                    .toCallback
-                                }
-                                  .open()
+                            Callback {
+                              makePlaid(plaidLinkToken) { (publicToken, metadata) =>
+                                doAdd(
+                                  publicToken,
+                                  io.circe.scalajs.decodeJs[Institution](metadata.institution).toTry.get
+                                )
+                                  .toCallback
                               }
-                            }.toCallback
-                          },
+                                .open()
+                            }
+                          }.toCallback
+                        },
                         <.div(
                           state.items
                             .flatMap(item => state.info.errors.get(item.itemId).map(item -> _))
                             .toTagMod { case (item, errors) =>
-                              Button("Fix " + item.institution.name)
-                                .title(errors.map(_.error_message).mkString("\n"))
-                                .onClick { _ =>
-                                  ajax[String]("/api/linkToken/" + item.itemId)
-                                    .flatMapSync { token =>
-                                      Callback {
-                                        makePlaid(token)((_, _) => props.refresh)
-                                          .open()
-                                      }
+                              AntButton(
+                                "Fix " + item.institution.name,
+                                title = errors.map(_.error_message).mkString("\n")
+                              ) { _ =>
+                                ajax[String]("/api/linkToken/" + item.itemId)
+                                  .flatMapSync { token =>
+                                    Callback {
+                                      makePlaid(token)((_, _) => props.refresh)
+                                        .open()
                                     }
-                                    .toCallback
-                                }
+                                  }
+                                  .toCallback
+                              }
                             }
                         ),
                         Dropdown(removeItemMenu.rawElement)
