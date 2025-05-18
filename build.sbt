@@ -91,7 +91,7 @@ val js = project
     libraryDependencies ++= Seq(
       "dev.optics"                        %%% "monocle-macro"      % "3.2.0",
       "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % "2.1.2",
-      "io.github.cquiroz"                 %%% "scala-java-time"    % "2.5.0",
+      "io.github.cquiroz"                 %%% "scala-java-time"    % "2.6.0",
       "com.nrinaudo"                      %%% "kantan.csv"         % "0.7.0",
       "io.github.nafg.antd"               %%% "antd-scalajs-react" % "0.0.1"
     ),
