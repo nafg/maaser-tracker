@@ -13,7 +13,7 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 import io.github.nafg.antd.facade.antd.anon.ScrollToFirstRowOnChange
 import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.components.{Button, Col, Dropdown, Layout, Menu, Row, Space, Table, Tooltip}
+import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Layout, Menu, Space, Table, Tooltip}
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipPropsWithTitle
@@ -25,7 +25,7 @@ import io.circe.syntax.EncoderOps
 import kantan.csv.ops.*
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
-import maasertracker.js.Facades.{AntButton, AntCard}
+import maasertracker.js.Facades.Ant
 import monocle.Iso
 import monocle.macros.GenLens
 
@@ -251,11 +251,11 @@ object TransactionsView {
           Layout.Content(
             <.div(
               Space.direction(antdStrings.vertical)(
-                Row(
-                  Col.flex(antdStrings.auto)(
-                    AntCard(size = CardSize.small)(
+                Ant.Row(
+                  Ant.Col(flex = antdStrings.auto)(
+                    Ant.Card(size = CardSize.small)(
                       Space(
-                        AntButton(buttonType = antdStrings.primary)("Add bank") { _ =>
+                        Ant.Button(buttonType = antdStrings.primary)("Add bank") { _ =>
                           ajax[String]("/api/plaid-link-token").flatMapSync { plaidLinkToken =>
                             def doAdd(publicToken: String, institution: Institution) =
                               Ajax
@@ -280,7 +280,7 @@ object TransactionsView {
                           state.items
                             .flatMap(item => state.info.errors.get(item.itemId).map(item -> _))
                             .toTagMod { case (item, errors) =>
-                              AntButton(title = errors.map(_.error_message).mkString("\n"))(
+                              Ant.Button(title = errors.map(_.error_message).mkString("\n"))(
                                 "Fix " + item.institution.name
                               ) { _ =>
                                 ajax[String]("/api/linkToken/" + item.itemId)
