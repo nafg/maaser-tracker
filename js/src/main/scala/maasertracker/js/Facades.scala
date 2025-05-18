@@ -1,5 +1,7 @@
 package maasertracker.js
 
+import scala.scalajs.js.|
+
 import org.scalajs.dom.HTMLElement
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, ReactMouseEventFrom}
@@ -43,5 +45,10 @@ object Facades {
     def Row(content: TagMod*) =
       A.Row
         .apply(content*)
+
+    def Space(direction: antdStrings.horizontal | antdStrings.vertical = antdStrings.horizontal)(content: TagMod*) =
+      A.Space
+        .apply(content*)
+        .direction(direction)
   }
 }

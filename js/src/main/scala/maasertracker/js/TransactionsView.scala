@@ -13,7 +13,7 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 import io.github.nafg.antd.facade.antd.anon.ScrollToFirstRowOnChange
 import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu, Space, Table, Tooltip}
+import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu, Table, Tooltip}
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipPropsWithTitle
@@ -250,11 +250,11 @@ object TransactionsView {
         Ant.Layout(style = CSSProperties().setPadding("24px 24px"))(
           Ant.Layout.Content(
             <.div(
-              Space.direction(antdStrings.vertical)(
+              Ant.Space(direction = antdStrings.vertical)(
                 Ant.Row(
                   Ant.Col(flex = antdStrings.auto)(
                     Ant.Card(size = CardSize.small)(
-                      Space(
+                      Ant.Space()(
                         Ant.Button(buttonType = antdStrings.primary)("Add bank") { _ =>
                           ajax[String]("/api/plaid-link-token").flatMapSync { plaidLinkToken =>
                             def doAdd(publicToken: String, institution: Institution) =
@@ -297,7 +297,7 @@ object TransactionsView {
                         Dropdown(removeItemMenu.rawElement)
                           .triggerVarargs(antdStrings.click)(
                             Button.danger(true)(
-                              Space(
+                              Ant.Space()(
                                 "Remove",
                                 <.i(^.cls := "fa fa-angle-down")
                               )
@@ -306,7 +306,7 @@ object TransactionsView {
                         Dropdown(downloadItemMenu.rawElement)
                           .triggerVarargs(antdStrings.click)(
                             Button(
-                              Space(
+                              Ant.Space()(
                                 "Download",
                                 <.i(^.cls := "fa fa-angle-down")
                               )
