@@ -13,13 +13,12 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 import io.github.nafg.antd.facade.antd.anon.ScrollToFirstRowOnChange
 import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu, Table, Tooltip}
+import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu, Table}
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
-import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipPropsWithTitle
 import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
 import io.github.nafg.antd.facade.rcTable
-import io.github.nafg.antd.facade.react.mod.{CSSProperties, RefAttributes}
+import io.github.nafg.antd.facade.react.mod.CSSProperties
 
 import io.circe.syntax.EncoderOps
 import kantan.csv.ops.*
@@ -66,11 +65,8 @@ object TransactionsView {
     val dateColType =
       ColType("date", "Date")
         .withRenderEach { tx =>
-          Tooltip(
-            TooltipPropsWithTitle()
-              .setTitle(tx.transactionId)
-              .setChildren(tx.date.toString)
-              .combineWith(RefAttributes[Any]())
+          Ant.Tooltip(title = tx.transactionId)(
+            tx.date.toString
           )
         }
 

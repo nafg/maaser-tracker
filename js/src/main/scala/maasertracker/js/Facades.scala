@@ -8,8 +8,9 @@ import japgolly.scalajs.react.{Callback, ReactMouseEventFrom}
 import io.github.nafg.antd.facade.antd.libButtonButtonMod.ButtonType
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libGridColMod.FlexType
+import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipProps
 import io.github.nafg.antd.facade.antd.{antdStrings, components as A}
-import io.github.nafg.antd.facade.react.mod.CSSProperties
+import io.github.nafg.antd.facade.react.mod.{CSSProperties, RefAttributes}
 
 object Facades {
   object Ant {
@@ -50,5 +51,15 @@ object Facades {
       A.Space
         .apply(content*)
         .direction(direction)
+
+    def Tooltip(title: VdomNode)(children: VdomNode) =
+      A.Tooltip
+        .apply(
+          TooltipProps.TooltipPropsWithTitle()
+            .setTitle(title.rawNode)
+            .setChildren(children)
+            .combineWith(RefAttributes[Any]())
+        )
+
   }
 }
