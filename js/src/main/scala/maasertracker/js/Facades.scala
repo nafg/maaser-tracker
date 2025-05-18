@@ -29,10 +29,16 @@ object Facades {
         .apply(content*)
         .flex(flex)
 
-    def Layout(style: CSSProperties)(content: TagMod*) =
-      A.Layout
-        .apply(content*)
-        .style(style)
+    object Layout {
+      def apply(style: CSSProperties)(content: TagMod*) =
+        A.Layout
+          .apply(content*)
+          .style(style)
+
+      def Content(content: TagMod*) =
+        A.Layout.Content
+          .apply(content*)
+    }
 
     def Row(content: TagMod*) =
       A.Row

@@ -13,7 +13,7 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 import io.github.nafg.antd.facade.antd.anon.ScrollToFirstRowOnChange
 import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Layout, Menu, Space, Table, Tooltip}
+import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu, Space, Table, Tooltip}
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.libTooltipMod.TooltipPropsWithTitle
@@ -248,7 +248,7 @@ object TransactionsView {
           })
 
         Ant.Layout(style = CSSProperties().setPadding("24px 24px"))(
-          Layout.Content(
+          Ant.Layout.Content(
             <.div(
               Space.direction(antdStrings.vertical)(
                 Ant.Row(
