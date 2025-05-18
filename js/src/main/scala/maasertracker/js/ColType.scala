@@ -86,5 +86,5 @@ case class FilteringColType[A](colType: ColType,
 
   def stateToKeys(state: TransactionsView.State) = lens.get(state).map(filterItems.toKey)
 
-  def keysToState(keys: Iterable[String]) = lens.replace(keys.flatMap(filterItems.fromKey.get(_)).toSet)
+  def keysToState(keys: Iterable[String]) = lens.replace(keys.flatMap(filterItems.fromKey.get).toSet)
 }

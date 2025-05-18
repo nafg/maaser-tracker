@@ -40,14 +40,14 @@ import monocle.Iso
 import monocle.macros.GenLens
 
 object TransactionsView {
-  def accountNameParts(acct: AccountInfo) = {
+  private def accountNameParts(acct: AccountInfo) = {
     val i = acct.institution.name
     val a = acct.account.name.replaceAll(i, "").trim
     val t = acct.account.subtype
     (i, a, t)
   }
 
-  def accountLabel(acct: AccountInfo) = {
+  private def accountLabel(acct: AccountInfo) = {
     val (i, a, t) = accountNameParts(acct)
     val a1        = a match {
       case "" => ""
@@ -56,7 +56,7 @@ object TransactionsView {
     s"$i$a1 ($t)"
   }
 
-  def makePlaid(token: String)(onSuccess: (String, js.Dynamic) => Callback) = {
+  private def makePlaid(token: String)(onSuccess: (String, js.Dynamic) => Callback) = {
     def tokenParam = token
 
     def onSuccessParam = onSuccess
@@ -224,7 +224,7 @@ object TransactionsView {
 
         val downloadItemMenu =
           Menu(downloadOptions.toReactFragment { option =>
-            Menu.Item.withProps(MenuItemProps().setOnClick { menuInfo =>
+            Menu.Item.withProps(MenuItemProps().setOnClick { _ =>
               val transactions =
                 option.institution match {
                   case None              => state.info.transactions.flatMap(_.toOption).sortBy(_.date)

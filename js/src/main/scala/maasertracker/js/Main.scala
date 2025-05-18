@@ -14,7 +14,7 @@ import maasertracker.{PlaidItem, TransactionsInfo, Transfer}
 object Main {
   @js.native
   @JSImport("antd/dist/antd.less", JSImport.Default)
-  val CSS: js.Object = js.native
+  private val CSS: js.Object = js.native
   locally(CSS)
 
   case class State(info: TransactionsInfo, items: Seq[PlaidItem], categories: Seq[List[String]])

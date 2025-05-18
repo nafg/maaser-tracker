@@ -19,6 +19,7 @@ package object js {
       .map(xhr => io.circe.parser.decode[A](xhr.responseText))
       .flatMap(result => AsyncCallback.fromFuture(Future.fromTry(result.toTry)))
 
+  //noinspection ScalaUnusedSymbol
   def nullableToOption[A: ClassTag](value: A | Null): Option[A] =
     value match {
       case value: A               => Some(value)
