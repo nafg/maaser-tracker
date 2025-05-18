@@ -247,7 +247,7 @@ object TransactionsView {
             )
           })
 
-        Layout.style(CSSProperties().setPadding("24px 24px"))(
+        Ant.Layout(style = CSSProperties().setPadding("24px 24px"))(
           Layout.Content(
             <.div(
               Space.direction(antdStrings.vertical)(

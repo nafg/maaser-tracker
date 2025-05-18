@@ -7,6 +7,7 @@ import io.github.nafg.antd.facade.antd.libButtonButtonMod.ButtonType
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libGridColMod.FlexType
 import io.github.nafg.antd.facade.antd.{antdStrings, components as A}
+import io.github.nafg.antd.facade.react.mod.CSSProperties
 
 object Facades {
   object Ant {
@@ -23,13 +24,18 @@ object Facades {
         .apply(content*)
         .size(size)
 
-    def Row(content: TagMod*) =
-      A.Row
-        .apply(content*)
-
     def Col(flex: FlexType)(content: TagMod*) =
       A.Col
         .apply(content*)
         .flex(flex)
+
+    def Layout(style: CSSProperties)(content: TagMod*) =
+      A.Layout
+        .apply(content*)
+        .style(style)
+
+    def Row(content: TagMod*) =
+      A.Row
+        .apply(content*)
   }
 }
