@@ -1,6 +1,7 @@
 package maasertracker.js
 
 import scala.collection.immutable.SortedSet
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.math.Ordering.Implicits.seqOrdering
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
@@ -19,7 +20,8 @@ object Main {
 
   case class State(info: TransactionsInfo, items: Seq[PlaidItem], categories: Seq[List[String]])
 
-  private def loadData(setState: Either[String, State] => AsyncCallback[Unit]): AsyncCallback[Unit] =
+  private def loadData(setState: Either[String, State] => AsyncCallback[Unit],
+                       retry: FiniteDuration = 1.seconds): AsyncCallback[Unit] =
     Api.getTransactions
       .zip(Api.getItems)
       .flatMap { case (info, items) =>
@@ -36,7 +38,8 @@ object Main {
       }
       .handleError { t =>
         t.printStackTrace()
-        setState(Left(t.toString))
+        setState(Left(t.toString)) >>
+          loadData(setState, (retry * 2).min(2.minute)).delay(retry)
       }
 
   val component =
