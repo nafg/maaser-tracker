@@ -12,9 +12,7 @@ import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps,
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.components.{Dropdown, Menu}
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
-import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
 import io.github.nafg.antd.facade.react.mod.CSSProperties
 
@@ -145,18 +143,6 @@ object TransactionsView {
       .builder[(Props, State, RouterCtl[State])]
       .render_P { case (props, state1, routerCtl) =>
         import props.state
-        val itemMenuItems  = state.items.toTagMod(item => Menu.Item.withKey(item.itemId)(<.a(item.institution.name)))
-        val removeItemMenu =
-          Menu(itemMenuItems)
-            .onClick { menuInfo =>
-              Callback.traverseOption(state.items.find(_.itemId == menuInfo.key)) { item =>
-                CallbackTo.confirm("Really remove " + item.institution.name + "?")
-                  .flatMap {
-                    case false => Callback.empty
-                    case true  => removeItem(item).flatMapSync(_ => props.refresh).toCallback
-                  }
-              }
-            }
 
         implicit val headerEncoder: HeaderEncoder[Transaction] = new HeaderEncoder[Transaction] {
           override val header: Option[Seq[String]] =
@@ -197,41 +183,6 @@ object TransactionsView {
         case class DownloadOption(institution: Option[Institution])
         val downloadOptions = state.items.map(item => DownloadOption(Some(item.institution))) :+ DownloadOption(None)
 
-        val downloadItemMenu =
-          Menu(downloadOptions.toReactFragment { option =>
-            Menu.Item.withProps(MenuItemProps().setOnClick { _ =>
-              val transactions =
-                option.institution match {
-                  case None              => state.info.transactions.flatMap(_.toOption).sortBy(_.date)
-                  case Some(institution) =>
-                    state.info.transactions.flatMap(_.fold(_.toSeq, Seq(_)))
-                      .filter { tx =>
-                        state.info.accounts(tx.accountId).institution.institution_id == institution.institution_id
-                      }
-                      .sortBy(_.date)
-                }
-
-              Callback {
-                val sw = new StringWriter()
-                sw.writeCsv(transactions, rfc.withHeader)
-                val a  = dom.window.document.createElement("a").asInstanceOf[HTMLAnchorElement]
-                a.href =
-                  URL.createObjectURL(new Blob(
-                    js.Array(sw.toString),
-                    new BlobPropertyBag {
-                      `type` = "text/csv;charset=utf-8"
-                    }
-                  ))
-                a.setAttribute("download", option.institution.fold("all")(_.name) + ".csv")
-                a.click()
-              }
-            })(
-              <.a(
-                option.institution.fold("All - no transfers")(_.name)
-              )
-            )
-          })
-
         Ant.Layout(style = CSSProperties().setPadding("24px 24px"))(
           Ant.Layout.Content(
             <.div(
@@ -254,24 +205,53 @@ object TransactionsView {
                               )(s"Fix ${item.institution.name}")
                             }
                         ),
-                        Dropdown(removeItemMenu.rawElement)
-                          .triggerVarargs(antdStrings.click)(
-                            Ant.Button(danger = true)(
-                              Ant.Space()(
-                                "Remove",
-                                <.i(^.cls := "fa fa-angle-down")
-                              )
-                            )
-                          ),
-                        Dropdown(downloadItemMenu.rawElement)
-                          .triggerVarargs(antdStrings.click)(
-                            Ant.Button()(
-                              Ant.Space()(
-                                "Download",
-                                <.i(^.cls := "fa fa-angle-down")
-                              )
-                            )
-                          )
+                        Ant.Dropdown(antdStrings.click)(
+                          Ant.Button(danger = true)(Ant.Space()("Remove", <.i(^.cls := "fa fa-angle-down")))
+                        )(
+                          state.items.map { item =>
+                            Ant.Dropdown.Item(item.itemId)(item.institution.name) {
+                              CallbackTo.confirm("Really remove " + item.institution.name + "?")
+                                .flatMap {
+                                  case false => Callback.empty
+                                  case true  => removeItem(item).flatMapSync(_ => props.refresh).toCallback
+                                }
+                            }
+                          }
+                        ),
+                        Ant.Dropdown(antdStrings.click)(
+                          Ant.Button()(Ant.Space()("Download", <.i(^.cls := "fa fa-angle-down")))
+                        )(
+                          downloadOptions.map { option =>
+                            Ant.Dropdown.Item(option.institution.fold("all")(_.institution_id))(
+                              option.institution.fold("All - no transfers")(_.name)
+                            )(Callback {
+                              val transactions =
+                                option.institution match {
+                                  case None              => state.info.transactions.flatMap(_.toOption).sortBy(_.date)
+                                  case Some(institution) =>
+                                    state.info.transactions.flatMap(_.fold(_.toSeq, Seq(_)))
+                                      .filter { tx =>
+                                        state.info.accounts(
+                                          tx.accountId
+                                        ).institution.institution_id == institution.institution_id
+                                      }
+                                      .sortBy(_.date)
+                                }
+                              val sw           = new StringWriter()
+                              sw.writeCsv(transactions, rfc.withHeader)
+                              val a            = dom.window.document.createElement("a").asInstanceOf[HTMLAnchorElement]
+                              a.href =
+                                URL.createObjectURL(new Blob(
+                                  js.Array(sw.toString),
+                                  new BlobPropertyBag {
+                                    `type` = "text/csv;charset=utf-8"
+                                  }
+                                ))
+                              a.setAttribute("download", option.institution.fold("all")(_.name) + ".csv")
+                              a.click()
+                            })
+                          }
+                        )
                       )
                     )
                   )

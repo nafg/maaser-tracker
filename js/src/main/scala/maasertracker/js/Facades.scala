@@ -43,6 +43,37 @@ object Facades {
         .apply(content*)
         .flex(flex)
 
+    object Dropdown {
+      sealed trait Child
+      case class Item(key: String, danger: Boolean = false, disabled: Boolean = false)(val content: VdomNode)(
+          val onClick: Callback)
+          extends Child
+      //noinspection ScalaWeakerAccess
+      case object Divider extends Child
+
+      def apply(triggers: (antdStrings.click | antdStrings.hover | antdStrings.contextMenu)*)(content: TagMod*)(
+          menu: Seq[Child]) =
+        A.Dropdown
+          .apply(overlay =
+            A.Menu
+              .apply(
+                menu.toReactFragment {
+                  case Divider    => A.Menu.Divider()
+                  case item: Item =>
+                    A.Menu.Item
+                      .withKey(item.key)
+                      .apply(item.content)
+                      .danger(item.danger)
+                      .disabled(item.disabled)
+                      .onClick(_ => item.onClick)
+                }
+              )
+              .rawElement
+          )
+          .trigger(triggers.toJSArray)
+          .apply(content*)
+    }
+
     object Layout {
       def apply(style: CSSProperties)(content: TagMod*) =
         A.Layout
