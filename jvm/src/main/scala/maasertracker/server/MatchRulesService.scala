@@ -17,11 +17,11 @@ object MatchRulesService {
         )
       }
 
-    lazy val transfer = grouped.getOrElse("transfer", Nil)
-    lazy val income = grouped.getOrElse("income", Nil)
+    lazy val transfer    = grouped.getOrElse("transfer", Nil)
+    lazy val income      = grouped.getOrElse("income", Nil)
     lazy val exemption   = grouped.getOrElse("exemption", Nil)
     lazy val fulfillment = grouped.getOrElse("fulfillment", Nil)
   }
 
-  def load = Tables.MatchRuleTable.Q.result.toIO.map(Rules)
+  def load = Tables.MatchRuleTable.Q.result.toIO.map(Rules(_))
 }

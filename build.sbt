@@ -9,8 +9,15 @@ name := "maaser"
 inThisBuild(
   Seq(
     version      := "0.1",
-    scalaVersion := "2.13.8",
-    scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint", "-Ymacro-annotations", "-Xsource:3")
+    scalaVersion := "2.13.16",
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-Xlint",
+      "-Ymacro-annotations",
+      "-Xsource:3",
+      "-Wconf:site=maasertracker.generated.tables.*&cat=scala3-migration:warning"
+    )
   )
 )
 
