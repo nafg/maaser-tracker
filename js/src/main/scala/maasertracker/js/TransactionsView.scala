@@ -1,5 +1,6 @@
 package maasertracker.js
 
+import org.scalajs.dom
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -25,6 +26,12 @@ object TransactionsView {
       .builder[(Props, PageParams, RouterCtl[PageParams])]
       .render_P { case (props, pageParams, routerCtl) =>
         import props.state
+
+        val pageParamsStateSnapshot =
+          StateSnapshot(pageParams) {
+            case (Some(s), _) => routerCtl.set(s)
+            case _            => Callback.empty
+          }
 
         ant.Layout()(
           ^.padding := "24px 24px",
@@ -79,12 +86,9 @@ object TransactionsView {
                       props.tagColType,
                       props.maaserBalanceColType
                     )
-                      .map(_.toAnt(StateSnapshot(pageParams) {
-                        case (Some(s), _) => routerCtl.set(s)
-                        case _            => Callback.empty
-                      })),
+                      .map(ColType.toAnt(pageParamsStateSnapshot, _)),
                   onChange = { case (_, filters, _, _) =>
-                    routerCtl.set(props.filterColTypes.foldRight(pageParams)(_.handleOnChange(filters, _)))
+                    routerCtl.set(props.filterColTypes.foldRight(pageParams)(_.applyFilters(filters)(_)))
                   },
                   pagination = ant.Table.Pagination.False,
                   rowClassName = {

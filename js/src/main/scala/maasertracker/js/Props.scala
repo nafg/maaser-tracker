@@ -8,6 +8,8 @@ import maasertracker.js.facades.ant
 import maasertracker.{AccountInfo, Tags}
 
 case class Props(state: Main.State, refresh: Callback) {
+  private def formatDollars(amount: Double) = f"$$$amount%,.2f"
+
   private def accountNameParts(acct: AccountInfo) = {
     val i = acct.institution.name
     val a = acct.account.name.replaceAll(i, "").trim
@@ -65,26 +67,29 @@ case class Props(state: Main.State, refresh: Callback) {
   val typeColType = ColType("transactionType", "Type").withRenderEach(_.transactionType)
 
   val amountColType =
-    ColType(
-      key = "amount",
-      title = "Amount",
-      render = { t => _ =>
-        val amount = -1 * t.fold(_.deposit.amount, _.amount)
-        <.span(
-          ^.color := (t match {
-            case Right(tx) if tx.amount > 0 => "red"
-            case Right(tx) if tx.amount < 0 => "green"
-            case _                          => "gray"
-          }),
-          f"$$$amount%,.2f"
-        )
-      }
-    ).filtering(t => t.amount, PageParams.lensAmountFilters)(
-      List(
-        FilterItem(_ < 0, "Credit", hideTransfers = true),
-        FilterItem(_ > 0, "Debit", hideTransfers = true)
+    ColType("amount", "Amount")
+      .withRender(
+        single = { t => _ =>
+          <.span(
+            if (t.amount > 0)
+              ^.color.red
+            else if (t.amount < 0)
+              ^.color.green
+            else
+              ^.color.gray,
+            formatDollars(-t.amount)
+          )
+        },
+        transfer = { t => _ =>
+          <.span(^.color.gray, formatDollars(t.withdrawal.amount))
+        }
       )
-    )
+      .filtering(t => t.amount, PageParams.lensAmountFilters)(
+        List(
+          FilterItem(_ < 0, "Credit", hideTransfers = true),
+          FilterItem(_ > 0, "Debit", hideTransfers = true)
+        )
+      )
 
   val tagColType =
     ColType("tag", "Tag")
@@ -105,7 +110,9 @@ case class Props(state: Main.State, refresh: Callback) {
   val maaserBalanceColType =
     ColType("maaserBalance", "Maaser balance")
       .withRender { t => _ =>
-        f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"
+        formatDollars {
+          state.info.maaserBalances(t.transactionId)
+        }
       }
 
   val filterColTypes = List(accountColType, categoryColType, amountColType, tagColType)
