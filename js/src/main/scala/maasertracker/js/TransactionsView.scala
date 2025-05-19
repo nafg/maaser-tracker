@@ -1,24 +1,26 @@
 package maasertracker.js
 
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 
 import maasertracker.*
 import maasertracker.js.facades.ant
-import monocle.Iso
 import monocle.macros.GenLens
 
 object TransactionsView {
   case class State(accountFilters: Set[FilterItem[String]] = Set.empty,
                    categoryFilters: Set[FilterItem[List[String]]] = Set.empty,
                    amountFilters: Set[FilterItem[Double]] = Set.empty,
-                   tagFilters: Set[FilterItem[Option[Tags.Value]]] = Set.empty)
+                   tagFilters: Set[FilterItem[Option[Tags.Value]]] = Set.empty,
+                   sidePanelTransaction: Option[String] = None)
   object State {
-    val lensAccountFilters  = GenLens[State](_.accountFilters)
-    val lensCategoryFilters = GenLens[State](_.categoryFilters)
-    val lensAmountFilters   = GenLens[State](_.amountFilters)
-    val lensTagFilters      = GenLens[State](_.tagFilters)
+    val lensAccountFilters       = GenLens[State](_.accountFilters)
+    val lensCategoryFilters      = GenLens[State](_.categoryFilters)
+    val lensAmountFilters        = GenLens[State](_.amountFilters)
+    val lensTagFilters           = GenLens[State](_.tagFilters)
+    val lensSidePanelTransaction = GenLens[State](_.sidePanelTransaction)
   }
 
   private def refreshItem(item: PlaidItem) =
@@ -91,7 +93,10 @@ object TransactionsView {
                       props.tagColType,
                       props.maaserBalanceColType
                     )
-                      .map(_.toAnt(state1)),
+                      .map(_.toAnt(StateSnapshot(state1) {
+                        case (Some(s), _) => routerCtl.set(s)
+                        case _            => Callback.empty
+                      })),
                   onChange = { case (_, filters, _, _) =>
                     routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
                   },
@@ -110,6 +115,19 @@ object TransactionsView {
                   },
                   scroll = ant.Table.ScrollConfig(y = "calc(100vh - 156px)"),
                   size = ant.Table.Size.Small
+                ),
+                TransactionRulePanel(
+                  transaction =
+                    state1.sidePanelTransaction.flatMap { id =>
+                      state.info.transactions.collectFirst {
+                        case item @ Right(tx) if tx.transactionId == id => item
+                        case item @ Left(Transfer(tx1, tx2)) if tx1.transactionId == id || tx2.transactionId == id =>
+                          item
+                      }
+                    },
+                  onClose = routerCtl.set(State.lensSidePanelTransaction.replace(None)(state1)),
+                  visible = state1.sidePanelTransaction.nonEmpty,
+                  transactionsInfo = state.info
                 )
               )
             )
@@ -120,32 +138,29 @@ object TransactionsView {
 
   private val baseUrl = BaseUrl.fromWindowOrigin_/
 
-  private type QueryParamsMap = Map[String, Seq[String]]
-
-  private def queryParamsStateIso(props: Props) =
-    Iso[QueryParamsMap, State] { map =>
-      props.filterColTypes.foldRight(State()) { case (filteringColType, state) =>
-        map.get(filteringColType.key) match {
-          case Some(keys) => filteringColType.keysToState(keys)(state)
-          case None       => state
-        }
-      }
-    } { state =>
-      props.filterColTypes
-        .map { filteringColType =>
-          filteringColType.key -> filteringColType.stateToKeys(state).toSeq
-        }
-        .toMap
-    }
+  private type QueryParamsMap = Seq[(String, String)]
 
   private val routerConfig = RouterWithPropsConfigDsl[QueryParamsMap, Props].buildConfig { dsl =>
     import dsl.*
-    (dynamicRouteCT(queryToMultimap) ~>
-      dynRenderRP { (state, routerCtl, props) =>
-        val iso = queryParamsStateIso(props)
-        component.apply((props, iso.get(state), routerCtl.contramap(iso.reverseGet)))
+    (dynamicRouteCT(queryToSeq) ~>
+      dynRenderRP { (map, routerCtl, props) =>
+        component.apply((
+          props,
+          props.filterColTypes
+            .foldRight(State(sidePanelTransaction = map.collect { case ("show", v) => v }.lastOption)) {
+              case (filteringColType, state0) =>
+                filteringColType.keysToState(map.collect { case (k, v) if k == filteringColType.key => v })(state0)
+            },
+          routerCtl.contramap { state1 =>
+            state1.sidePanelTransaction.toSeq.map("show" -> _) ++
+              props.filterColTypes
+                .flatMap { filteringColType =>
+                  filteringColType.stateToKeys(state1).toSeq.map(filteringColType.key -> _)
+                }
+          }
+        ))
       })
-      .notFound(redirectToPage(Map())(SetRouteVia.HistoryReplace))
+      .notFound(redirectToPage(Seq())(SetRouteVia.HistoryReplace))
   }
 
   val router = RouterWithProps(baseUrl, routerConfig)

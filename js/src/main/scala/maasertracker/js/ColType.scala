@@ -3,6 +3,7 @@ package maasertracker.js
 import scala.scalajs.js.JSConverters.JSRichIterableOnce
 import scala.scalajs.js.|
 
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{React, facade}
 import io.github.nafg.antd.facade.antd.antdStrings.tree
@@ -16,42 +17,48 @@ import monocle.Lens
 trait BaseColType {
   def key: String
 
-  def toAnt(state: TransactionsView.State): ColumnType[TransactionsInfo.Item]
+  def toAnt(state: StateSnapshot[TransactionsView.State]): ColumnType[TransactionsInfo.Item]
 }
 
-case class ColType(override val key: String, title: String, render: TransactionsInfo.Item => VdomNode = _ => EmptyVdom)
+case class ColType(override val key: String,
+                   title: String,
+                   render: TransactionsInfo.Item => StateSnapshot[TransactionsView.State] => VdomNode =
+                     _ => _ => EmptyVdom)
     extends BaseColType {
 
-  def withRender(single: Transaction => VdomNode, transfer: Transfer => VdomNode = _ => EmptyVdom) =
+  def withRender(single: Transaction => StateSnapshot[TransactionsView.State] => VdomNode,
+                 transfer: Transfer => StateSnapshot[TransactionsView.State] => VdomNode = _ => _ => EmptyVdom) =
     copy(render = _.fold(transfer, single))
 
   def withRenderEach(render: Transaction => VdomNode) =
     withRender(
-      render,
+      transaction => _ => render(transaction),
       {
         case Transfer(tx1, tx2) =>
-          val s1 = render(tx1)
-          val s2 = render(tx2)
-          if (s1 == s2)
-            s1
-          else
-            React.Fragment(
-              <.div(s1),
-              " -> ",
-              <.div(s2)
-            )
-
+          _ =>
+            val s1 = render(tx1)
+            val s2 = render(tx2)
+            if (s1 == s2)
+              s1
+            else
+              React.Fragment(
+                <.div(s1),
+                " -> ",
+                <.div(s2)
+              )
       }
     )
 
   def filtering[A](get: Transaction => A, lens: Lens[TransactionsView.State, Set[FilterItem[A]]])(
       items: Iterable[FilterItem[A]]) = FilteringColType(this, FilterItems(items), get, lens)
 
-  override def toAnt(state: TransactionsView.State) =
+  override def toAnt(state: StateSnapshot[TransactionsView.State]) =
     ColumnType[TransactionsInfo.Item]()
       .setKey(key)
       .setTitle(title)
-      .setRender((_, t, _) => render(t).rawNode.asInstanceOf[facade.React.Node | RenderedCell[TransactionsInfo.Item]])
+      .setRender((_, t, _) =>
+        render(t)(state).rawNode.asInstanceOf[facade.React.Node | RenderedCell[TransactionsInfo.Item]]
+      )
 }
 
 case class FilteringColType[A](colType: ColType,
@@ -61,10 +68,10 @@ case class FilteringColType[A](colType: ColType,
     extends BaseColType {
   override def key = colType.key
 
-  override def toAnt(state: TransactionsView.State) =
+  override def toAnt(state: StateSnapshot[TransactionsView.State]) =
     colType.toAnt(state)
       .setFilterMode(tree)
-      .setFilteredValue(lens.get(state).toJSArray.map(filterItems.toKey))
+      .setFilteredValue(lens.get(state.value).toJSArray.map(filterItems.toKey))
       .setFilters(filterItems.items.map(_.toAnt(filterItems)).toJSArray)
       .setOnFilter { (value, item) =>
         val filter = filterItems.fromKey(value.toString)

@@ -1,8 +1,7 @@
 package maasertracker.js
 
-import scala.scalajs.js.JSConverters.JSRichIterableOnce
-
 import japgolly.scalajs.react.Callback
+import japgolly.scalajs.react.ReactMonocle.MonocleReactExt_StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 
 import maasertracker.js.facades.ant
@@ -55,7 +54,7 @@ case class Props(state: Main.State, refresh: Callback) {
     ColType("category", "Category")
       .withRenderEach(_.category.mkString(" > "))
       .filtering(_.category, TransactionsView.State.lensCategoryFilters)(
-        state.categories.toJSArray.map { category =>
+        state.categories.map { category =>
           FilterItem[List[String]](
             category == _,
             if (category.isEmpty) "None" else category.mkString(" > ")
@@ -67,9 +66,9 @@ case class Props(state: Main.State, refresh: Callback) {
 
   val amountColType =
     ColType(
-      "amount",
-      "Amount",
-      { t =>
+      key = "amount",
+      title = "Amount",
+      render = { t => _ =>
         val amount = -1 * t.fold(_.deposit.amount, _.amount)
         <.span(
           ^.color := (t match {
@@ -89,7 +88,15 @@ case class Props(state: Main.State, refresh: Callback) {
 
   val tagColType =
     ColType("tag", "Tag")
-      .withRender(t => state.info.tags.get(t.transactionId).mkString)
+      .withRender { t => state1 =>
+        ant.Button(
+          buttonType = ant.Button.Type.Link,
+          onClick = _ =>
+            state1.setStateL(TransactionsView.State.lensSidePanelTransaction)(Some(t.transactionId))
+        )(
+          state.info.tags.get(t.transactionId).mkString
+        )
+      }
       .filtering(t => state.info.tags.get(t.transactionId), TransactionsView.State.lensTagFilters)(
         FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
           Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
@@ -97,7 +104,7 @@ case class Props(state: Main.State, refresh: Callback) {
 
   val maaserBalanceColType =
     ColType("maaserBalance", "Maaser balance")
-      .withRender { t =>
+      .withRender { t => _ =>
         f"$$${state.info.maaserBalances(t.transactionId)}%,.2f"
       }
 
