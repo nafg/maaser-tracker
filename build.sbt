@@ -47,7 +47,7 @@ commands += Command.command("dev")("js/start; ~all jvm/reStart js/fastOptJS::web
 lazy val start = TaskKey[Unit]("start")
 
 val Http4sVersion  = "0.23.24"
-val LogbackVersion = "1.4.11"
+val LogbackVersion = "1.5.18"
 
 //noinspection ScalaUnusedSymbol,ScalaWeakerAccess
 val jvm = project
