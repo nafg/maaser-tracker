@@ -12,7 +12,7 @@ import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps,
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.components.{Button, Dropdown, Menu}
+import io.github.nafg.antd.facade.antd.components.{Dropdown, Menu}
 import io.github.nafg.antd.facade.antd.libCardMod.CardSize
 import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
@@ -240,23 +240,23 @@ object TransactionsView {
                   Ant.Col(flex = antdStrings.auto)(
                     Ant.Card(size = CardSize.small)(
                       Ant.Space()(
-                        Ant.Button(buttonType = antdStrings.primary)("Add bank") { _ =>
-                          addBank().flatMapSync(_ => props.refresh).toCallback
-                        },
+                        Ant.Button(
+                          buttonType = antdStrings.primary,
+                          onClick = _ => addBank().flatMapSync(_ => props.refresh).toCallback
+                        )("Add bank"),
                         <.div(
                           state.items
                             .flatMap(item => state.info.errors.get(item.itemId).map(item -> _))
                             .toTagMod { case (item, errors) =>
-                              Ant.Button(title = errors.map(_.error_message).mkString("\n"))(
-                                "Fix " + item.institution.name
-                              ) { _ =>
-                                refreshItem(item).flatMapSync(_ => props.refresh).toCallback
-                              }
+                              Ant.Button(
+                                onClick = _ => refreshItem(item).flatMapSync(_ => props.refresh).toCallback,
+                                title = errors.map(_.error_message).mkString("\n")
+                              )(s"Fix ${item.institution.name}")
                             }
                         ),
                         Dropdown(removeItemMenu.rawElement)
                           .triggerVarargs(antdStrings.click)(
-                            Button.danger(true)(
+                            Ant.Button(danger = true)(
                               Ant.Space()(
                                 "Remove",
                                 <.i(^.cls := "fa fa-angle-down")
@@ -265,7 +265,7 @@ object TransactionsView {
                           ),
                         Dropdown(downloadItemMenu.rawElement)
                           .triggerVarargs(antdStrings.click)(
-                            Button(
+                            Ant.Button()(
                               Ant.Space()(
                                 "Download",
                                 <.i(^.cls := "fa fa-angle-down")

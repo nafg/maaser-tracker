@@ -21,13 +21,17 @@ import io.github.nafg.antd.facade.std.Record
 
 object Facades {
   object Ant {
-    def Button(buttonType: ButtonType = antdStrings.default, title: String = "")(
-        content: TagMod*)(onClick: ReactMouseEventFrom[HTMLElement] => Callback) =
+    def Button(buttonType: ButtonType = antdStrings.default,
+               danger: Boolean = false,
+               onClick: ReactMouseEventFrom[HTMLElement] => Callback = _ => Callback.empty,
+               title: String = "")(
+        content: TagMod*) =
       A.Button
         .apply(content*)
         .`type`(buttonType)
-        .title(title)
+        .danger(danger)
         .onClick(onClick)
+        .title(title)
 
     def Card(size: CardSize)(content: TagMod*) =
       A.Card
