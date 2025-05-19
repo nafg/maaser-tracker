@@ -123,17 +123,15 @@ object TransactionsView {
   }
 
   private def refreshItem(item: PlaidItem) =
-    Ajax.get[String]("/api/linkToken/" + item.itemId)
+    Api.getLinkToken(item)
       .flatMap(Plaid.makeAndOpen)
 
   private def addBank() =
-    Ajax.get[String]("/api/plaid-link-token")
+    Api.getPlaidLinkToken
       .flatMap(Plaid.makeAndOpen)
-      .flatMap { result =>
-        Ajax.post[Unit]("/api/items", AddItemRequest(result.publicToken, result.metadata.institution))
-      }
+      .flatMap(result => Api.addItem(result.publicToken, result.metadata.institution))
 
-  private def removeItem(item: PlaidItem) = Ajax.delete(s"/api/items/${item.itemId}")
+  private def removeItem(item: PlaidItem) = Api.deleteItem(item)
 
   private val component =
     ScalaComponent

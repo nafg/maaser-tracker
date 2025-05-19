@@ -7,7 +7,7 @@ import scala.scalajs.js.annotation.JSImport
 
 import org.scalajs.dom
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{Callback, ScalaComponent}
+import japgolly.scalajs.react.{AsyncCallback, ScalaComponent}
 
 import maasertracker.{PlaidItem, TransactionsInfo, Transfer}
 
@@ -19,10 +19,10 @@ object Main {
 
   case class State(info: TransactionsInfo, items: Seq[PlaidItem], categories: Seq[List[String]])
 
-  private def loadData(setState: Either[String, State] => Callback) =
-    Ajax.get[TransactionsInfo]("/api/transactions")
-      .zip(Ajax.get[Seq[PlaidItem]]("/api/items"))
-      .flatMapSync { case (info, items) =>
+  private def loadData(setState: Either[String, State] => AsyncCallback[Unit]): AsyncCallback[Unit] =
+    Api.getTransactions
+      .zip(Api.getItems)
+      .flatMap { case (info, items) =>
         val categories =
           info
             .transactions
@@ -34,11 +34,10 @@ object Main {
         val state      = State(info = info, items = items, categories = categories.toSeq)
         setState(Right(state))
       }
-      .handleErrorSync { t =>
+      .handleError { t =>
         t.printStackTrace()
         setState(Left(t.toString))
       }
-      .toCallback
 
   val component =
     ScalaComponent.builder[Unit]
@@ -51,12 +50,12 @@ object Main {
             TransactionsView.router(
               TransactionsView.Props(
                 state = state,
-                refresh = loadData(state => self.setState(Some(state)))
+                refresh = loadData(state => self.setStateAsync(Some(state))).toCallback
               )
             )
         }
       }
-      .componentDidMount(self => loadData(state => self.setState(Some(state))))
+      .componentDidMount(self => loadData(state => self.setStateAsync(Some(state))))
       .build
 
   def main(args: Array[String]): Unit = component().renderIntoDOM(dom.document.getElementById("container"))
