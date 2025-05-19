@@ -1,17 +1,9 @@
 package maasertracker.js
 
-import java.io.StringWriter
-
-import scala.scalajs.js
-
-import org.scalajs.dom
-import org.scalajs.dom.*
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 
-import kantan.csv.ops.*
-import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
 import maasertracker.js.Facades.Ant
 import monocle.Iso
@@ -45,45 +37,6 @@ object TransactionsView {
       .builder[(Props, State, RouterCtl[State])]
       .render_P { case (props, state1, routerCtl) =>
         import props.state
-
-        implicit val headerEncoder: HeaderEncoder[Transaction] = new HeaderEncoder[Transaction] {
-          override val header: Option[Seq[String]] =
-            Some(
-              List(
-                "Institution",
-                "Account",
-                "Account type",
-                "Date",
-                "Transaction ID",
-                "Description",
-                "Amount",
-                "Debit or Credit",
-                "Category",
-                "Type",
-                "Tag"
-              )
-            )
-
-          override val rowEncoder: RowEncoder[Transaction] = { (d: Transaction) =>
-            val accountInfo = state.info.accounts(d.accountId)
-            List(
-              accountInfo.institution.name,
-              accountInfo.account.name,
-              accountInfo.account.subtype,
-              d.date.toString,
-              d.transactionId,
-              d.name,
-              d.amount.abs.toString,
-              if (d.amount > 0) "debit" else "credit",
-              d.category.mkString(" / "),
-              d.transactionType,
-              state.info.tags.get(d.transactionId).fold("")(t => t.toString)
-            )
-          }
-        }
-
-        case class DownloadOption(institution: Option[Institution])
-        val downloadOptions = state.items.map(item => DownloadOption(Some(item.institution))) :+ DownloadOption(None)
 
         Ant.Layout()(
           ^.padding := "24px 24px",
@@ -121,40 +74,7 @@ object TransactionsView {
                             }
                           }
                         ),
-                        Ant.Dropdown(Ant.Dropdown.Trigger.Click)(
-                          Ant.Button()(Ant.Space()("Download", <.i(^.cls := "fa fa-angle-down")))
-                        )(
-                          downloadOptions.map { option =>
-                            Ant.Dropdown.Item(option.institution.fold("all")(_.institution_id))(
-                              option.institution.fold("All - no transfers")(_.name)
-                            )(Callback {
-                              val transactions =
-                                option.institution match {
-                                  case None              => state.info.transactions.flatMap(_.toOption).sortBy(_.date)
-                                  case Some(institution) =>
-                                    state.info.transactions.flatMap(_.fold(_.toSeq, Seq(_)))
-                                      .filter { tx =>
-                                        state.info.accounts(
-                                          tx.accountId
-                                        ).institution.institution_id == institution.institution_id
-                                      }
-                                      .sortBy(_.date)
-                                }
-                              val sw           = new StringWriter()
-                              sw.writeCsv(transactions, rfc.withHeader)
-                              val a            = dom.window.document.createElement("a").asInstanceOf[HTMLAnchorElement]
-                              a.href =
-                                URL.createObjectURL(new Blob(
-                                  js.Array(sw.toString),
-                                  new BlobPropertyBag {
-                                    `type` = "text/csv;charset=utf-8"
-                                  }
-                                ))
-                              a.setAttribute("download", option.institution.fold("all")(_.name) + ".csv")
-                              a.click()
-                            })
-                          }
-                        )
+                        DownloadsDropdown.downloadDropdown(state.info, state.items)
                       )
                     )
                   )
