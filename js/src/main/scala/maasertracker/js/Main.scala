@@ -20,8 +20,8 @@ object Main {
   case class State(info: TransactionsInfo, items: Seq[PlaidItem], categories: Seq[List[String]])
 
   private def loadData(setState: Either[String, State] => Callback) =
-    ajax[TransactionsInfo]("/api/transactions")
-      .zip(ajax[Seq[PlaidItem]]("/api/items"))
+    ajaxGet[TransactionsInfo]("/api/transactions")
+      .zip(ajaxGet[Seq[PlaidItem]]("/api/items"))
       .flatMapSync { case (info, items) =>
         val categories =
           info

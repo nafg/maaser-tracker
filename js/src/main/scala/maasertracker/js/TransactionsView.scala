@@ -18,7 +18,6 @@ import io.github.nafg.antd.facade.antd.libMenuMenuItemMod.MenuItemProps
 import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
 import io.github.nafg.antd.facade.react.mod.CSSProperties
 
-import io.circe.syntax.EncoderOps
 import kantan.csv.ops.*
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
@@ -41,22 +40,6 @@ object TransactionsView {
       case a0 => ": " + a0
     }
     s"$i$a1 ($t)"
-  }
-
-  private def makePlaid(token: String)(onSuccess: (String, js.Dynamic) => Callback) = {
-    def tokenParam = token
-
-    def onSuccessParam = onSuccess
-
-    Plaid.create(
-      new PlaidCreateParam {
-        override val env       = "production"
-        override val product   = js.Array("transactions")
-        override val token     = tokenParam
-        override val onSuccess =
-          js.Any.fromFunction2((publicToken, metadata) => onSuccessParam(publicToken, metadata).runNow())
-      }
-    )
   }
 
   case class Props(state: Main.State, refresh: Callback) {
@@ -146,6 +129,17 @@ object TransactionsView {
     val lensTagFilters      = GenLens[State](_.tagFilters)
   }
 
+  private def refreshItem(item: PlaidItem) =
+    ajaxGet[String]("/api/linkToken/" + item.itemId)
+      .flatMap(Plaid.makeAndOpen)
+
+  private def addBank() =
+    ajaxGet[String]("/api/plaid-link-token")
+      .flatMap(Plaid.makeAndOpen)
+      .flatMap(result => ajaxPost[Unit]("/api/items", AddItemRequest(result.publicToken, result.metadata.institution)))
+
+  private def removeItem(item: PlaidItem) = Ajax("DELETE", s"/api/items/${item.itemId}").send.asAsyncCallback
+
   private val component =
     ScalaComponent
       .builder[(Props, State, RouterCtl[State])]
@@ -159,10 +153,7 @@ object TransactionsView {
                 CallbackTo.confirm("Really remove " + item.institution.name + "?")
                   .flatMap {
                     case false => Callback.empty
-                    case true  =>
-                      Ajax("DELETE", s"/api/items/${item.itemId}").send.asAsyncCallback
-                        .flatMapSync(_ => props.refresh)
-                        .toCallback
+                    case true  => removeItem(item).flatMapSync(_ => props.refresh).toCallback
                   }
               }
             }
@@ -250,25 +241,7 @@ object TransactionsView {
                     Ant.Card(size = CardSize.small)(
                       Ant.Space()(
                         Ant.Button(buttonType = antdStrings.primary)("Add bank") { _ =>
-                          ajax[String]("/api/plaid-link-token").flatMapSync { plaidLinkToken =>
-                            def doAdd(publicToken: String, institution: Institution) =
-                              Ajax
-                                .post("/api/items")
-                                .send(AddItemRequest(publicToken, institution).asJson.spaces4)
-                                .asAsyncCallback
-                                .flatMapSync(_ => props.refresh)
-
-                            Callback {
-                              makePlaid(plaidLinkToken) { (publicToken, metadata) =>
-                                doAdd(
-                                  publicToken,
-                                  io.circe.scalajs.decodeJs[Institution](metadata.institution).toTry.get
-                                )
-                                  .toCallback
-                              }
-                                .open()
-                            }
-                          }.toCallback
+                          addBank().flatMapSync(_ => props.refresh).toCallback
                         },
                         <.div(
                           state.items
@@ -277,14 +250,7 @@ object TransactionsView {
                               Ant.Button(title = errors.map(_.error_message).mkString("\n"))(
                                 "Fix " + item.institution.name
                               ) { _ =>
-                                ajax[String]("/api/linkToken/" + item.itemId)
-                                  .flatMapSync { token =>
-                                    Callback {
-                                      makePlaid(token)((_, _) => props.refresh)
-                                        .open()
-                                    }
-                                  }
-                                  .toCallback
+                                refreshItem(item).flatMapSync(_ => props.refresh).toCallback
                               }
                             }
                         ),
