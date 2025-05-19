@@ -89,7 +89,7 @@ val js = project
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "dev.optics"                        %%% "monocle-macro"      % "3.2.0",
+      "dev.optics"                        %%% "monocle-macro"      % "3.3.0",
       "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % "2.1.2",
       "io.github.cquiroz"                 %%% "scala-java-time"    % "2.6.0",
       "com.nrinaudo"                      %%% "kantan.csv"         % "0.8.0",
