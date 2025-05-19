@@ -1,0 +1,9 @@
+session_name: maaser-tracker
+windows:
+  - start_directory: /home/naftoli/repositories/github.com/nafg/maaser-tracker
+    layout: tiled
+    panes:
+      - sbt ~jvm/reStart
+      - shell_command:
+          - cmd: sleep 5
+          - cmd: sbt '~; js/fastOptJS/startWebpackDevServer; js/fastOptJS/webpack'
