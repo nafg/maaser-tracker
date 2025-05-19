@@ -7,7 +7,6 @@ import scala.scalajs.js.JSConverters.JSRichIterableOnce
 
 import org.scalajs.dom
 import org.scalajs.dom.*
-import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
@@ -124,15 +123,17 @@ object TransactionsView {
   }
 
   private def refreshItem(item: PlaidItem) =
-    ajaxGet[String]("/api/linkToken/" + item.itemId)
+    Ajax.get[String]("/api/linkToken/" + item.itemId)
       .flatMap(Plaid.makeAndOpen)
 
   private def addBank() =
-    ajaxGet[String]("/api/plaid-link-token")
+    Ajax.get[String]("/api/plaid-link-token")
       .flatMap(Plaid.makeAndOpen)
-      .flatMap(result => ajaxPost[Unit]("/api/items", AddItemRequest(result.publicToken, result.metadata.institution)))
+      .flatMap { result =>
+        Ajax.post[Unit]("/api/items", AddItemRequest(result.publicToken, result.metadata.institution))
+      }
 
-  private def removeItem(item: PlaidItem) = Ajax("DELETE", s"/api/items/${item.itemId}").send.asAsyncCallback
+  private def removeItem(item: PlaidItem) = Ajax.delete(s"/api/items/${item.itemId}")
 
   private val component =
     ScalaComponent
