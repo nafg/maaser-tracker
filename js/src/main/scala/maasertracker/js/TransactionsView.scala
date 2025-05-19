@@ -7,22 +7,8 @@ import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 
 import maasertracker.*
 import maasertracker.js.facades.ant
-import monocle.macros.GenLens
 
 object TransactionsView {
-  case class State(accountFilters: Set[FilterItem[String]] = Set.empty,
-                   categoryFilters: Set[FilterItem[List[String]]] = Set.empty,
-                   amountFilters: Set[FilterItem[Double]] = Set.empty,
-                   tagFilters: Set[FilterItem[Option[Tags.Value]]] = Set.empty,
-                   sidePanelTransaction: Option[String] = None)
-  object State {
-    val lensAccountFilters       = GenLens[State](_.accountFilters)
-    val lensCategoryFilters      = GenLens[State](_.categoryFilters)
-    val lensAmountFilters        = GenLens[State](_.amountFilters)
-    val lensTagFilters           = GenLens[State](_.tagFilters)
-    val lensSidePanelTransaction = GenLens[State](_.sidePanelTransaction)
-  }
-
   private def refreshItem(item: PlaidItem) =
     Api.getLinkToken(item)
       .flatMap(Plaid.makeAndOpen)
@@ -36,8 +22,8 @@ object TransactionsView {
 
   private val component =
     ScalaComponent
-      .builder[(Props, State, RouterCtl[State])]
-      .render_P { case (props, state1, routerCtl) =>
+      .builder[(Props, PageParams, RouterCtl[PageParams])]
+      .render_P { case (props, pageParams, routerCtl) =>
         import props.state
 
         ant.Layout()(
@@ -93,12 +79,12 @@ object TransactionsView {
                       props.tagColType,
                       props.maaserBalanceColType
                     )
-                      .map(_.toAnt(StateSnapshot(state1) {
+                      .map(_.toAnt(StateSnapshot(pageParams) {
                         case (Some(s), _) => routerCtl.set(s)
                         case _            => Callback.empty
                       })),
                   onChange = { case (_, filters, _, _) =>
-                    routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
+                    routerCtl.set(props.filterColTypes.foldRight(pageParams)(_.handleOnChange(filters, _)))
                   },
                   pagination = ant.Table.Pagination.False,
                   rowClassName = {
@@ -118,15 +104,15 @@ object TransactionsView {
                 ),
                 TransactionRulePanel(
                   transaction =
-                    state1.sidePanelTransaction.flatMap { id =>
+                    pageParams.sidePanelTransaction.flatMap { id =>
                       state.info.transactions.collectFirst {
                         case item @ Right(tx) if tx.transactionId == id => item
                         case item @ Left(Transfer(tx1, tx2)) if tx1.transactionId == id || tx2.transactionId == id =>
                           item
                       }
                     },
-                  onClose = routerCtl.set(State.lensSidePanelTransaction.replace(None)(state1)),
-                  visible = state1.sidePanelTransaction.nonEmpty,
+                  onClose = routerCtl.set(PageParams.lensSidePanelTransaction.replace(None)(pageParams)),
+                  visible = pageParams.sidePanelTransaction.nonEmpty,
                   transactionsInfo = state.info
                 )
               )
@@ -147,15 +133,17 @@ object TransactionsView {
         component.apply((
           props,
           props.filterColTypes
-            .foldRight(State(sidePanelTransaction = map.collect { case ("show", v) => v }.lastOption)) {
-              case (filteringColType, state0) =>
-                filteringColType.keysToState(map.collect { case (k, v) if k == filteringColType.key => v })(state0)
+            .foldRight(PageParams(sidePanelTransaction = map.collect { case ("show", v) => v }.lastOption)) {
+              case (filteringColType, pageParams) =>
+                filteringColType.keysToPageParams(map.collect { case (k, v) if k == filteringColType.key => v })(
+                  pageParams
+                )
             },
-          routerCtl.contramap { state1 =>
-            state1.sidePanelTransaction.toSeq.map("show" -> _) ++
+          routerCtl.contramap { pageParams =>
+            pageParams.sidePanelTransaction.toSeq.map("show" -> _) ++
               props.filterColTypes
                 .flatMap { filteringColType =>
-                  filteringColType.stateToKeys(state1).toSeq.map(filteringColType.key -> _)
+                  filteringColType.pageParamsToKeys(pageParams).toSeq.map(filteringColType.key -> _)
                 }
           }
         ))

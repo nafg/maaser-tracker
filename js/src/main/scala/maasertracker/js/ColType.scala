@@ -17,17 +17,17 @@ import monocle.Lens
 trait BaseColType {
   def key: String
 
-  def toAnt(state: StateSnapshot[TransactionsView.State]): ColumnType[TransactionsInfo.Item]
+  def toAnt(pageParams: StateSnapshot[PageParams]): ColumnType[TransactionsInfo.Item]
 }
 
 case class ColType(override val key: String,
                    title: String,
-                   render: TransactionsInfo.Item => StateSnapshot[TransactionsView.State] => VdomNode =
+                   render: TransactionsInfo.Item => StateSnapshot[PageParams] => VdomNode =
                      _ => _ => EmptyVdom)
     extends BaseColType {
 
-  def withRender(single: Transaction => StateSnapshot[TransactionsView.State] => VdomNode,
-                 transfer: Transfer => StateSnapshot[TransactionsView.State] => VdomNode = _ => _ => EmptyVdom) =
+  def withRender(single: Transaction => StateSnapshot[PageParams] => VdomNode,
+                 transfer: Transfer => StateSnapshot[PageParams] => VdomNode = _ => _ => EmptyVdom) =
     copy(render = _.fold(transfer, single))
 
   def withRenderEach(render: Transaction => VdomNode) =
@@ -49,29 +49,29 @@ case class ColType(override val key: String,
       }
     )
 
-  def filtering[A](get: Transaction => A, lens: Lens[TransactionsView.State, Set[FilterItem[A]]])(
+  def filtering[A](get: Transaction => A, lens: Lens[PageParams, Set[FilterItem[A]]])(
       items: Iterable[FilterItem[A]]) = FilteringColType(this, FilterItems(items), get, lens)
 
-  override def toAnt(state: StateSnapshot[TransactionsView.State]) =
+  override def toAnt(pageParams: StateSnapshot[PageParams]) =
     ColumnType[TransactionsInfo.Item]()
       .setKey(key)
       .setTitle(title)
       .setRender((_, t, _) =>
-        render(t)(state).rawNode.asInstanceOf[facade.React.Node | RenderedCell[TransactionsInfo.Item]]
+        render(t)(pageParams).rawNode.asInstanceOf[facade.React.Node | RenderedCell[TransactionsInfo.Item]]
       )
 }
 
 case class FilteringColType[A](colType: ColType,
                                filterItems: FilterItems[A],
                                get: Transaction => A,
-                               lens: Lens[TransactionsView.State, Set[FilterItem[A]]])
+                               lens: Lens[PageParams, Set[FilterItem[A]]])
     extends BaseColType {
   override def key = colType.key
 
-  override def toAnt(state: StateSnapshot[TransactionsView.State]) =
-    colType.toAnt(state)
+  override def toAnt(pageParams: StateSnapshot[PageParams]) =
+    colType.toAnt(pageParams)
       .setFilterMode(tree)
-      .setFilteredValue(lens.get(state.value).toJSArray.map(filterItems.toKey))
+      .setFilteredValue(lens.get(pageParams.value).toJSArray.map(filterItems.toKey))
       .setFilters(filterItems.items.map(_.toAnt(filterItems)).toJSArray)
       .setOnFilter { (value, item) =>
         val filter = filterItems.fromKey(value.toString)
@@ -83,15 +83,15 @@ case class FilteringColType[A](colType: ColType,
         )
       }
 
-  def handleOnChange(filters: Record[String, FilterValue | Null], state: TransactionsView.State) =
+  def handleOnChange(filters: Record[String, FilterValue | Null], pageParams: PageParams) =
     lens.replace(
       filters.get(key)
         .flatMap(nullableToOption)
         .map(_.map(key => filterItems.fromKey(key.toString)).toSet)
         .getOrElse(Set.empty)
-    )(state)
+    )(pageParams)
 
-  def stateToKeys(state: TransactionsView.State) = lens.get(state).map(filterItems.toKey)
+  def pageParamsToKeys(pageParams: PageParams) = lens.get(pageParams).map(filterItems.toKey)
 
-  def keysToState(keys: Iterable[String]) = lens.replace(keys.flatMap(filterItems.fromKey.get).toSet)
+  def keysToPageParams(keys: Iterable[String]) = lens.replace(keys.flatMap(filterItems.fromKey.get).toSet)
 }

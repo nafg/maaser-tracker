@@ -35,7 +35,7 @@ case class Props(state: Main.State, refresh: Callback) {
   val accountColType =
     ColType("account", "Account")
       .withRenderEach(t => accountLabel(state.info.accounts(t.accountId)))
-      .filtering(_.accountId, TransactionsView.State.lensAccountFilters)(
+      .filtering(_.accountId, PageParams.lensAccountFilters)(
         state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
           FilterItem(
             institution.institution_id == _,
@@ -53,7 +53,7 @@ case class Props(state: Main.State, refresh: Callback) {
   val categoryColType =
     ColType("category", "Category")
       .withRenderEach(_.category.mkString(" > "))
-      .filtering(_.category, TransactionsView.State.lensCategoryFilters)(
+      .filtering(_.category, PageParams.lensCategoryFilters)(
         state.categories.map { category =>
           FilterItem[List[String]](
             category == _,
@@ -79,7 +79,7 @@ case class Props(state: Main.State, refresh: Callback) {
           f"$$$amount%,.2f"
         )
       }
-    ).filtering(t => t.amount, TransactionsView.State.lensAmountFilters)(
+    ).filtering(t => t.amount, PageParams.lensAmountFilters)(
       List(
         FilterItem(_ < 0, "Credit", hideTransfers = true),
         FilterItem(_ > 0, "Debit", hideTransfers = true)
@@ -88,16 +88,16 @@ case class Props(state: Main.State, refresh: Callback) {
 
   val tagColType =
     ColType("tag", "Tag")
-      .withRender { t => state1 =>
+      .withRender { t => pageParams =>
         ant.Button(
           buttonType = ant.Button.Type.Link,
           onClick = _ =>
-            state1.setStateL(TransactionsView.State.lensSidePanelTransaction)(Some(t.transactionId))
+            pageParams.setStateL(PageParams.lensSidePanelTransaction)(Some(t.transactionId))
         )(
           state.info.tags.get(t.transactionId).mkString
         )
       }
-      .filtering(t => state.info.tags.get(t.transactionId), TransactionsView.State.lensTagFilters)(
+      .filtering(t => state.info.tags.get(t.transactionId), PageParams.lensTagFilters)(
         FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
           Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
       )
