@@ -11,10 +11,6 @@ import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
-import io.github.nafg.antd.facade.antd.antdStrings.small
-import io.github.nafg.antd.facade.antd.libCardMod.CardSize
-import io.github.nafg.antd.facade.antd.{antdBooleans, antdStrings}
-import io.github.nafg.antd.facade.react.mod.CSSProperties
 
 import kantan.csv.ops.*
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
@@ -183,16 +179,17 @@ object TransactionsView {
         case class DownloadOption(institution: Option[Institution])
         val downloadOptions = state.items.map(item => DownloadOption(Some(item.institution))) :+ DownloadOption(None)
 
-        Ant.Layout(style = CSSProperties().setPadding("24px 24px"))(
+        Ant.Layout()(
+          ^.padding := "24px 24px",
           Ant.Layout.Content(
             <.div(
-              Ant.Space(direction = antdStrings.vertical)(
+              Ant.Space(direction = Ant.Space.Direction.Vertical)(
                 Ant.Row(
-                  Ant.Col(flex = antdStrings.auto)(
-                    Ant.Card(size = CardSize.small)(
+                  Ant.Col(flex = Ant.Col.Flex.Auto)(
+                    Ant.Card(size = Ant.Card.Size.Small)(
                       Ant.Space()(
                         Ant.Button(
-                          buttonType = antdStrings.primary,
+                          buttonType = Ant.Button.Type.Primary,
                           onClick = _ => addBank().flatMapSync(_ => props.refresh).toCallback
                         )("Add bank"),
                         <.div(
@@ -205,7 +202,7 @@ object TransactionsView {
                               )(s"Fix ${item.institution.name}")
                             }
                         ),
-                        Ant.Dropdown(antdStrings.click)(
+                        Ant.Dropdown(Ant.Dropdown.Trigger.Click)(
                           Ant.Button(danger = true)(Ant.Space()("Remove", <.i(^.cls := "fa fa-angle-down")))
                         )(
                           state.items.map { item =>
@@ -218,7 +215,7 @@ object TransactionsView {
                             }
                           }
                         ),
-                        Ant.Dropdown(antdStrings.click)(
+                        Ant.Dropdown(Ant.Dropdown.Trigger.Click)(
                           Ant.Button()(Ant.Space()("Download", <.i(^.cls := "fa fa-angle-down")))
                         )(
                           downloadOptions.map { option =>
@@ -272,7 +269,7 @@ object TransactionsView {
                   onChange = { case (_, filters, _, _) =>
                     routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
                   },
-                  pagination = antdBooleans.`false`,
+                  pagination = Ant.Table.Pagination.False,
                   rowClassName = {
                     case (Right(tx), _) =>
                       state.info.tags.get(tx.transactionId) match {
@@ -286,7 +283,7 @@ object TransactionsView {
                     case Left(Transfer(tx1, tx2)) => tx1.transactionId + "->" + tx2.transactionId
                   },
                   scroll = Ant.Table.ScrollConfig(y = "calc(100vh - 156px)"),
-                  size = small
+                  size = Ant.Table.Size.Small
                 )
               )
             )
