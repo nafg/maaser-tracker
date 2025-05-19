@@ -5,7 +5,7 @@ import scala.scalajs.js.JSConverters.JSRichIterableOnce
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.vdom.html_<^.*
 
-import maasertracker.js.Facades.Ant
+import maasertracker.js.facades.ant
 import maasertracker.{AccountInfo, Tags}
 
 case class Props(state: Main.State, refresh: Callback) {
@@ -28,7 +28,7 @@ case class Props(state: Main.State, refresh: Callback) {
   val dateColType =
     ColType("date", "Date")
       .withRenderEach { tx =>
-        Ant.Tooltip(title = tx.transactionId)(
+        ant.Tooltip(title = tx.transactionId)(
           tx.date.toString
         )
       }

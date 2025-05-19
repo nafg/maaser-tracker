@@ -12,7 +12,7 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import kantan.csv.ops.toCsvOutputOps
 import kantan.csv.{HeaderEncoder, RowEncoder, rfc}
 import maasertracker.*
-import maasertracker.js.Facades.Ant
+import maasertracker.js.facades.ant
 
 object DownloadsDropdown {
   private class TransactionHeaderEncoder(accounts: Map[String, AccountInfo], tags: Map[String, Tags.Value])
@@ -75,7 +75,7 @@ object DownloadsDropdown {
     implicit val headerEncoder = new TransactionHeaderEncoder(transactionsInfo.accounts, transactionsInfo.tags)
 
     def downloadInstitutionItem(item: PlaidItem) =
-      Ant.Dropdown.Item(item.institution.institution_id)(item.institution.name) {
+      ant.Dropdown.Item(item.institution.institution_id)(item.institution.name) {
         download(
           transactionsInfo.transactions
             .flatMap(_.fold(_.toSeq, Seq(_)))
@@ -88,12 +88,12 @@ object DownloadsDropdown {
       }
 
     def downloadAllItem =
-      Ant.Dropdown.Item("all")("All - no transfers") {
+      ant.Dropdown.Item("all")("All - no transfers") {
         download(transactionsInfo.transactions.flatMap(_.toOption), "all")
       }
 
-    Ant.Dropdown(Ant.Dropdown.Trigger.Click)(
-      Ant.Button()(Ant.Space()("Download", <.i(^.cls := "fa fa-angle-down")))
+    ant.Dropdown(ant.Dropdown.Trigger.Click)(
+      ant.Button()(ant.Space()("Download", <.i(^.cls := "fa fa-angle-down")))
     )(
       items.map(downloadInstitutionItem) :+
         downloadAllItem

@@ -5,7 +5,7 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 
 import maasertracker.*
-import maasertracker.js.Facades.Ant
+import maasertracker.js.facades.ant
 import monocle.Iso
 import monocle.macros.GenLens
 
@@ -38,34 +38,34 @@ object TransactionsView {
       .render_P { case (props, state1, routerCtl) =>
         import props.state
 
-        Ant.Layout()(
+        ant.Layout()(
           ^.padding := "24px 24px",
-          Ant.Layout.Content(
+          ant.Layout.Content(
             <.div(
-              Ant.Space(direction = Ant.Space.Direction.Vertical)(
-                Ant.Row(
-                  Ant.Col(flex = Ant.Col.Flex.Auto)(
-                    Ant.Card(size = Ant.Card.Size.Small)(
-                      Ant.Space()(
-                        Ant.Button(
-                          buttonType = Ant.Button.Type.Primary,
+              ant.Space(direction = ant.Space.Direction.Vertical)(
+                ant.Row(
+                  ant.Col(flex = ant.Col.Flex.Auto)(
+                    ant.Card(size = ant.Card.Size.Small)(
+                      ant.Space()(
+                        ant.Button(
+                          buttonType = ant.Button.Type.Primary,
                           onClick = _ => addBank().flatMapSync(_ => props.refresh).toCallback
                         )("Add bank"),
                         <.div(
                           state.items
                             .flatMap(item => state.info.errors.get(item.itemId).map(item -> _))
                             .toTagMod { case (item, errors) =>
-                              Ant.Button(
+                              ant.Button(
                                 onClick = _ => refreshItem(item).flatMapSync(_ => props.refresh).toCallback,
                                 title = errors.map(_.error_message).mkString("\n")
                               )(s"Fix ${item.institution.name}")
                             }
                         ),
-                        Ant.Dropdown(Ant.Dropdown.Trigger.Click)(
-                          Ant.Button(danger = true)(Ant.Space()("Remove", <.i(^.cls := "fa fa-angle-down")))
+                        ant.Dropdown(ant.Dropdown.Trigger.Click)(
+                          ant.Button(danger = true)(ant.Space()("Remove", <.i(^.cls := "fa fa-angle-down")))
                         )(
                           state.items.map { item =>
-                            Ant.Dropdown.Item(item.itemId)(item.institution.name) {
+                            ant.Dropdown.Item(item.itemId)(item.institution.name) {
                               CallbackTo.confirm("Really remove " + item.institution.name + "?")
                                 .flatMap {
                                   case false => Callback.empty
@@ -79,7 +79,7 @@ object TransactionsView {
                     )
                   )
                 ),
-                Ant.Table(state.info.transactions)(
+                ant.Table(state.info.transactions)(
                   columns =
                     List(
                       props.dateColType,
@@ -95,7 +95,7 @@ object TransactionsView {
                   onChange = { case (_, filters, _, _) =>
                     routerCtl.set(props.filterColTypes.foldRight(state1)(_.handleOnChange(filters, _)))
                   },
-                  pagination = Ant.Table.Pagination.False,
+                  pagination = ant.Table.Pagination.False,
                   rowClassName = {
                     case (Right(tx), _) =>
                       state.info.tags.get(tx.transactionId) match {
@@ -108,8 +108,8 @@ object TransactionsView {
                     case Right(tx)                => tx.transactionId
                     case Left(Transfer(tx1, tx2)) => tx1.transactionId + "->" + tx2.transactionId
                   },
-                  scroll = Ant.Table.ScrollConfig(y = "calc(100vh - 156px)"),
-                  size = Ant.Table.Size.Small
+                  scroll = ant.Table.ScrollConfig(y = "calc(100vh - 156px)"),
+                  size = ant.Table.Size.Small
                 )
               )
             )
