@@ -37,32 +37,14 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
   val accountColType =
     ColType("account", "Account")
       .withRenderEach(t => accountLabel(state.info.accounts(t.accountId)))
-      .filtering(_.accountId, PageParams.lensAccountFilters)(
-        state.info.accounts.groupBy(_._2.institution).map { case (institution, accounts) =>
-          FilterItem(
-            institution.institution_id == _,
-            institution.name,
-            accounts.values
-              .toSeq
-              .sortBy(_.account.name)
-              .map(info => FilterItem(info.id == _, s"${info.account.name} (${info.account.subtype})"))
-          )
-        }
-      )
+      .filtering(_.accountId)(FilterSpecs.accountFilterSpec)
 
   val nameColType = ColType("name", "Name").withRenderEach(_.name)
 
   val categoryColType =
     ColType("category", "Category")
       .withRenderEach(_.category.mkString(" > "))
-      .filtering(_.category, PageParams.lensCategoryFilters)(
-        state.categories.map { category =>
-          FilterItem[List[String]](
-            category == _,
-            if (category.isEmpty) "None" else category.mkString(" > ")
-          )
-        }
-      )
+      .filtering(_.category)(FilterSpecs.categoryFilterSpec)
 
   val typeColType = ColType("transactionType", "Type").withRenderEach(_.transactionType)
 
@@ -84,12 +66,7 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
           <.span(^.color.gray, formatDollars(t.withdrawal.amount))
         }
       )
-      .filtering(t => t.amount, PageParams.lensAmountFilters)(
-        List(
-          FilterItem(_ < 0, "Credit", hideTransfers = true),
-          FilterItem(_ > 0, "Debit", hideTransfers = true)
-        )
-      )
+      .filtering(_.amount)(FilterSpecs.amountFilterSpec)
 
   val tagColType =
     ColType("tag", "Tag")
@@ -149,10 +126,7 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
             )
         }
       }
-      .filtering(t => state.info.tags.get(t.transactionId), PageParams.lensTagFilters)(
-        FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:
-          Tags.values.toList.map(tag => FilterItem[Option[Tags.Value]](_.contains(tag), tag.toString))
-      )
+      .filtering(t => state.info.tags.get(t.transactionId))(FilterSpecs.tagFilterSpec)
 
   val maaserBalanceColType =
     ColType("maaserBalance", "Maaser balance")
@@ -161,6 +135,4 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
           state.info.maaserBalances(t.transactionId)
         }
       }
-
-  val filterColTypes = List(accountColType, categoryColType, amountColType, tagColType)
 }

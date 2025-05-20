@@ -1,7 +1,7 @@
 package maasertracker.js
 
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
+import japgolly.scalajs.react.extra.router.RouterCtl
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, CallbackTo, ScalaComponent}
 
@@ -20,14 +20,16 @@ object TransactionsView {
 
   private def removeItem(item: PlaidItem) = Api.Items.delete(item)
 
-  case class Props(state: Main.State, refresh: Callback) {
+  case class Props(routerProps: Router.Props, pageParams: PageParams, routerCtl: RouterCtl[PageParams]) {
+    def state        = routerProps.state
+    def refresh      = routerProps.refresh
     lazy val columns = new Columns(state, refresh.asAsyncCallback)
   }
 
-  private val component =
+  val component =
     ScalaComponent
-      .builder[(Props, PageParams, RouterCtl[PageParams])]
-      .render_P { case (props, pageParams, routerCtl) =>
+      .builder[Props]
+      .render_P { case props @ Props(_, pageParams, routerCtl) =>
         import props.{columns, state}
 
         val pageParamsStateSnapshot =
@@ -89,9 +91,9 @@ object TransactionsView {
                       columns.tagColType,
                       columns.maaserBalanceColType
                     )
-                      .map(ColType.toAnt(pageParamsStateSnapshot, _)),
+                      .map(ColType.toAnt(state, pageParamsStateSnapshot, _)),
                   onChange = { case (_, filters, _, _) =>
-                    routerCtl.set(columns.filterColTypes.foldRight(pageParams)(_.applyFilters(filters)(_)))
+                    routerCtl.set(FilterSpec.applyFilters(state, filters, FilterSpecs.filterSpecs)(pageParams))
                   },
                   pagination = ant.Table.Pagination.False,
                   rowClassName = {
@@ -129,34 +131,4 @@ object TransactionsView {
       }
       .build
 
-  private val baseUrl = BaseUrl.fromWindowOrigin_/
-
-  private type QueryParamsMap = Seq[(String, String)]
-
-  private val routerConfig = RouterWithPropsConfigDsl[QueryParamsMap, Props].buildConfig { dsl =>
-    import dsl.*
-    (dynamicRouteCT(queryToSeq) ~>
-      dynRenderRP { (map, routerCtl, props) =>
-        component.apply((
-          props,
-          props.columns.filterColTypes
-            .foldRight(PageParams(sidePanelTransaction = map.collect { case ("show", v) => v }.lastOption)) {
-              case (filteringColType, pageParams) =>
-                filteringColType.keysToPageParams(map.collect { case (k, v) if k == filteringColType.key => v })(
-                  pageParams
-                )
-            },
-          routerCtl.contramap { pageParams =>
-            pageParams.sidePanelTransaction.toSeq.map("show" -> _) ++
-              props.columns.filterColTypes
-                .flatMap { filteringColType =>
-                  filteringColType.pageParamsToKeys(pageParams).toSeq.map(filteringColType.key -> _)
-                }
-          }
-        ))
-      })
-      .notFound(redirectToPage(Seq())(SetRouteVia.HistoryReplace))
-  }
-
-  val router = RouterWithProps(baseUrl, routerConfig)
 }

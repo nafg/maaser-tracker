@@ -3,26 +3,23 @@ package maasertracker.js
 import scala.scalajs.js.JSConverters.JSRichIterableOnce
 import scala.scalajs.js.|
 
+import japgolly.scalajs.react.React
 import japgolly.scalajs.react.extra.StateSnapshot
+import japgolly.scalajs.react.facade.React.Node
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{React, facade}
 import io.github.nafg.antd.facade.antd.antdStrings.tree
-import io.github.nafg.antd.facade.antd.libTableInterfaceMod.{ColumnType, FilterValue}
+import io.github.nafg.antd.facade.antd.libTableInterfaceMod.ColumnType
 import io.github.nafg.antd.facade.rcTable.libInterfaceMod.RenderedCell
-import io.github.nafg.antd.facade.std.Record
 
 import maasertracker.TransactionsInfo.Item
 import maasertracker.{Transaction, TransactionsInfo, Transfer}
-import monocle.Lens
 
-sealed trait ColType {
-  def key: String
-}
-object ColType       {
+sealed trait ColType
+object ColType {
   def apply(key: String, title: String) = Simple(key, title)
 
   case class Simple(
-      override val key: String,
+      key: String,
       title: String,
       render: TransactionsInfo.Item => StateSnapshot[PageParams] => VdomNode = _ => _ => EmptyVdom)
       extends ColType {
@@ -50,45 +47,29 @@ object ColType       {
         }
       )
 
-    def filtering[A](get: Transaction => A, lens: Lens[PageParams, Set[FilterItem[A]]])(
-        items: Iterable[FilterItem[A]]) = Filtering(this, FilterItems(items), get, lens)
+    def filtering[A](get: Transaction => A)(filterSpec: FilterSpec[PageParams, A]) = Filtering(this, filterSpec, get)
   }
 
-  case class Filtering[A](colType: Simple,
-                          filterItems: FilterItems[A],
-                          get: Transaction => A,
-                          lens: Lens[PageParams, Set[FilterItem[A]]])
-      extends ColType {
-    override def key = colType.key
+  case class Filtering[A](colType: Simple, filterSpec: FilterSpec[PageParams, A], get: Transaction => A)
+      extends ColType
 
-    private def decodeFilters(filters: Record[String, FilterValue | Null]): Set[FilterItem[A]] =
-      filters.get(key)
-        .flatMap(nullableToOption)
-        .map(_.map(key => filterItems.fromKey(key.toString)).toSet)
-        .getOrElse(Set.empty)
+  private def toAnt(pageParams: StateSnapshot[PageParams], simple: Simple) =
+    ColumnType[Item]()
+      .setKey(simple.key)
+      .setTitle(simple.title)
+      .setRender((_, t, _) =>
+        simple.render(t)(pageParams).rawNode.asInstanceOf[Node | RenderedCell[Item]]
+      )
 
-    def applyFilters(filters: Record[String, FilterValue | Null]): PageParams => PageParams =
-      lens.replace(decodeFilters(filters))
-
-    def pageParamsToKeys(pageParams: PageParams) = lens.get(pageParams).map(filterItems.toKey)
-
-    def keysToPageParams(keys: Iterable[String]) = lens.replace(keys.flatMap(filterItems.fromKey.get).toSet)
-  }
-
-  def toAnt(pageParams: StateSnapshot[PageParams], colType: ColType): ColumnType[Item] =
+  def toAnt(state: Main.State, pageParams: StateSnapshot[PageParams], colType: ColType): ColumnType[Item] =
     colType match {
-      case ColType.Simple(key, title, render)                 =>
-        ColumnType[TransactionsInfo.Item]()
-          .setKey(key)
-          .setTitle(title)
-          .setRender((_, t, _) =>
-            render(t)(pageParams).rawNode.asInstanceOf[facade.React.Node | RenderedCell[TransactionsInfo.Item]]
-          )
-      case ColType.Filtering(colType, filterItems, get, lens) =>
+      case simple: Simple                              => toAnt(pageParams, simple)
+      case ColType.Filtering(colType, filterSpec, get) =>
+        val filterItems = filterSpec.filterItemsFunc(state)
         toAnt(pageParams, colType)
           .setFilterMode(tree)
-          .setFilteredValue(lens.get(pageParams.value).toJSArray.map(filterItems.toKey))
-          .setFilters(filterItems.items.map(_.toAnt(filterItems)).toJSArray)
+          .setFilteredValue(filterSpec.lens.get(pageParams.value).toJSArray.map(filterItems.toKey))
+          .setFilters(filterItems.toAnt)
           .setOnFilter { (value, item) =>
             val filter = filterItems.fromKey(value.toString)
             item.fold(

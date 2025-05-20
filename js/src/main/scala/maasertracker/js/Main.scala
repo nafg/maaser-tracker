@@ -50,8 +50,8 @@ object Main {
           case None               => <.div("Loading...")
           case Some(Left(error))  => <.div("ERROR: " + error)
           case Some(Right(state)) =>
-            TransactionsView.router(
-              TransactionsView.Props(
+            Router.router(
+              Router.Props(
                 state = state,
                 refresh = loadData(state => self.setStateAsync(Some(state))).toCallback
               )
