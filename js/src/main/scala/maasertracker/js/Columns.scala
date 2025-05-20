@@ -106,16 +106,20 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
 
         def addIdRule(t: Tags.Value) = Api.MatchRules.add(Kind.forTag(t), idMatcher)
 
-        def dropdown(label: String)(firstItems: Iterable[ant.Dropdown.Child]*) =
+        val manageRulesItem =
+          ant.Dropdown.Item("Manage rules")("Manage rules") {
+            pageParams.setStateL(PageParams.lensSidePanelTransaction)(Some(tx.transactionId))
+          }
+
+        def dropdown(label: String)(firstItems: Iterable[ant.Dropdown.Child]*) = {
+          val firstItemsFlat = firstItems.toList.flatten
           ant.Dropdown.hover(ant.Button()(label))(
-            firstItems.toList.flatten ++
-              List(
-                ant.Dropdown.Divider,
-                ant.Dropdown.Item("Manage rules")("Manage rules") {
-                  pageParams.setStateL(PageParams.lensSidePanelTransaction)(Some(tx.transactionId))
-                }
-              )
+            if (firstItemsFlat.isEmpty)
+              List(manageRulesItem)
+            else
+              firstItemsFlat ++ List(ant.Dropdown.Divider, manageRulesItem)
           )
+        }
 
         state.info.tagsAndMatchers.get(tx.transactionId) match {
           case None                 =>
@@ -130,16 +134,18 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
             def deleteMatcher() = Api.MatchRules.delete(Kind.forTag(tag), matcher)
 
             dropdown(tag.toString)(
-              Tags.values.filterNot(_ == tag).toList.map { t =>
-                ant.Dropdown.Item(t.toString)(<.span("Change to ", <.b(t.toString))) {
-                  (deleteMatcher() >> addIdRule(t) >> refresh).toCallback
-                }
-              },
-              Option.when(matcher.id.isDefined) {
-                ant.Dropdown.Item("Remove tag")("Remove tag") {
-                  (deleteMatcher() >> refresh).toCallback
-                }
-              }
+              if (matcher.id.isEmpty) Nil
+              else
+                Tags.values.filterNot(_ == tag).toList.map { t =>
+                  ant.Dropdown.Item(t.toString)(<.span("Change to ", <.b(t.toString))) {
+                    (deleteMatcher() >> addIdRule(t) >> refresh).toCallback
+                  }
+                } ++
+                  Option.when(matcher.id.isDefined) {
+                    ant.Dropdown.Item("Remove tag")("Remove tag") {
+                      (deleteMatcher() >> refresh).toCallback
+                    }
+                  }
             )
         }
       }
