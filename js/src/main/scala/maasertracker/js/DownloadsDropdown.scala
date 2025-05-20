@@ -47,7 +47,7 @@ object DownloadsDropdown {
         if (d.amount > 0) "debit" else "credit",
         d.category.mkString(" / "),
         d.transactionType,
-        tags.get(d.transactionId).fold("")(t => t.toString)
+        tags.get(d.transactionId).fold("")(_.toString)
       )
     }
   }
@@ -92,7 +92,7 @@ object DownloadsDropdown {
         download(transactionsInfo.transactions.flatMap(_.toOption), "all")
       }
 
-    ant.Dropdown(ant.Dropdown.Trigger.Click)(
+    ant.Dropdown.click(
       ant.Button()(ant.Space()("Download", <.i(^.cls := "fa fa-angle-down")))
     )(
       items.map(downloadInstitutionItem) :+

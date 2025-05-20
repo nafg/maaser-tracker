@@ -139,16 +139,10 @@ final class PlaidService(val plaidApi: PlaidApi) {
             .dropWhile(_.date.isBefore(startDate))
             .map(Right(_)),
         startingMaaserBalance = initialMaaserBalance.doubleValue,
-        matchers = Matchers(
-          transfer = matchRules.transfer,
-          income = matchRules.income,
-          nonMaaserIncome = matchRules.exemption,
-          maaserPayment = matchRules.fulfillment
-        ),
+        matchers = matchRules.matchers,
         errors = errors.toMap.map { case (k, v) => k.itemId -> v }
       )
         .combineTransfers
-        .sorted
     }
   }
 }

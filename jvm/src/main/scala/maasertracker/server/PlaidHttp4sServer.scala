@@ -13,7 +13,7 @@ import io.circe.syntax.*
 import maasertracker.generated.models.{PlaidInstitutionRow, PlaidItemRow}
 import maasertracker.generated.tables.SlickProfile.api.*
 import maasertracker.generated.tables.Tables
-import maasertracker.{AddItemRequest, Institution}
+import maasertracker.{AddItemRequest, Institution, TransactionMatcher}
 import org.flywaydb.core.Flyway
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import org.http4s.circe.jsonEncoder
@@ -38,7 +38,7 @@ object PlaidHttp4sServer extends IOApp {
         )
       })
 
-  def httpApp(plaidService: PlaidService) = {
+  private def httpApp(plaidService: PlaidService) = {
     import plaidService.createLinkToken
 
     val router = Router(
@@ -54,29 +54,29 @@ object PlaidHttp4sServer extends IOApp {
     def createLinkTokenRequest = createLinkToken(List(Products.AUTH, Products.TRANSACTIONS))
 
     val routes = HttpRoutes.of[IO] {
-      case GET -> Root / "plaid-link-token.jsonp" =>
+      case GET -> Root / "plaid-link-token.jsonp"               =>
         callAsync(createLinkTokenRequest)
           .flatMap(res => Ok(s"const plaidLinkToken = '${res.getLinkToken}'"))
-      case GET -> Root / "plaid-link-token"       =>
+      case GET -> Root / "plaid-link-token"                     =>
         callAsync(createLinkTokenRequest)
           .flatMap(res => Ok(res.getLinkToken.asJson))
-      case GET -> Root / "linkToken" / itemId     =>
+      case GET -> Root / "linkToken" / itemId                   =>
         withItem(itemId) { item =>
           callAsync(createLinkToken(Nil, _.accessToken(item.accessToken)))
             .flatMap(res => Ok(res.getLinkToken.asJson))
             .recoverWith { case ResponseFailed(eb) => BadRequest(eb.toString) }
         }
-      case GET -> Root / "items"                  =>
+      case GET -> Root / "items"                                =>
         loadItems
           .toIO
           .flatMap(results => Ok(results.map(_.toShared)))
-      case DELETE -> Root / "items" / itemId      =>
+      case DELETE -> Root / "items" / itemId                    =>
         withItem(itemId) { item =>
           callAsync(plaidService.plaidApi.itemRemove(new ItemRemoveRequest().accessToken(item.accessToken))) >>
             Tables.PlaidItemTable.Q.filter(_.itemId === itemId).delete.toIO >>
             Ok()
         }
-      case req @ POST -> Root / "items"           =>
+      case req @ POST -> Root / "items"                         =>
         def getOrInsert[A](table: EntityTableModule[Long, A])(compare: (table.Row, A) => Rep[Boolean])(a: A) =
           table.Q
             .filter(compare(_, a))
@@ -103,17 +103,33 @@ object PlaidHttp4sServer extends IOApp {
             getOrInsert(Tables.PlaidItemTable)(_.accessToken === _.accessToken)(
               PlaidItemRow(itemId = item.itemId, accessToken = item.accessToken, institution = institution)
             ).toIO
-          res            <- Ok()
+          res            <- Ok(().asJson)
         } yield res)
           .handleErrorWith { t =>
             t.printStackTrace()
             InternalServerError(t.getLocalizedMessage)
           }
-      case GET -> Root / "transactions"           =>
+      case GET -> Root / "transactions"                         =>
         for {
           items            <- loadItems.toIO
           transactionsInfo <- plaidService.transactionsInfo(items)
           res              <- Ok(transactionsInfo)
+        } yield res
+      case req @ POST -> Root / "match-rules" / kind / "add"    =>
+        for {
+          matcher <- req.as[TransactionMatcher]
+          row = TransactionMatcher.toRow(kind, matcher)
+          _   <- Tables.MatchRuleTable.Q.insert(row).toIO
+          res <- Ok(().asJson)
+        } yield res
+      case req @ POST -> Root / "match-rules" / kind / "delete" =>
+        for {
+          matcher <- req.as[TransactionMatcher]
+          row    = TransactionMatcher.toRow(kind, matcher)
+          delete = MatchRulesService.findRow(row).delete
+          _      = println(delete.statements.mkString("\n"))
+          _   <- delete.toIO
+          res <- Ok(().asJson)
         } yield res
     }
 
@@ -121,7 +137,7 @@ object PlaidHttp4sServer extends IOApp {
       .orNotFound
   }
 
-  def app =
+  private def app =
     EmberServerBuilder.default[IO]
       .withHost(host"0.0.0.0")
       .withPort(port"9090")

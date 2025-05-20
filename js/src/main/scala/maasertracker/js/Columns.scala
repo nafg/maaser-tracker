@@ -1,13 +1,13 @@
 package maasertracker.js
 
-import japgolly.scalajs.react.Callback
+import japgolly.scalajs.react.AsyncCallback
 import japgolly.scalajs.react.ReactMonocle.MonocleReactExt_StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 
 import maasertracker.js.facades.ant
-import maasertracker.{AccountInfo, Tags}
+import maasertracker.{AccountInfo, Kind, Tags, TransactionMatcher}
 
-case class Props(state: Main.State, refresh: Callback) {
+class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
   private def formatDollars(amount: Double) = f"$$$amount%,.2f"
 
   private def accountNameParts(acct: AccountInfo) = {
@@ -93,14 +93,55 @@ case class Props(state: Main.State, refresh: Callback) {
 
   val tagColType =
     ColType("tag", "Tag")
-      .withRender { t => pageParams =>
-        ant.Button(
-          buttonType = ant.Button.Type.Link,
-          onClick = _ =>
-            pageParams.setStateL(PageParams.lensSidePanelTransaction)(Some(t.transactionId))
-        )(
-          state.info.tags.get(t.transactionId).mkString
-        )
+      .withRender { tx => pageParams =>
+        def idMatcher =
+          TransactionMatcher(
+            id = Some(tx.transactionId),
+            institution = None,
+            description = None,
+            category = None,
+            minAmount = None,
+            maxAmount = None
+          )
+
+        def addIdRule(t: Tags.Value) = Api.MatchRules.add(Kind.forTag(t), idMatcher)
+
+        def dropdown(label: String)(firstItems: Iterable[ant.Dropdown.Child]*) =
+          ant.Dropdown.hover(ant.Button()(label))(
+            firstItems.toList.flatten ++
+              List(
+                ant.Dropdown.Divider,
+                ant.Dropdown.Item("Manage rules")("Manage rules") {
+                  pageParams.setStateL(PageParams.lensSidePanelTransaction)(Some(tx.transactionId))
+                }
+              )
+          )
+
+        state.info.tagsAndMatchers.get(tx.transactionId) match {
+          case None                 =>
+            dropdown("No tag")(
+              Tags.values.toList.map { tag =>
+                ant.Dropdown.Item(tag.toString)(<.span("Set to ", <.b(tag.toString))) {
+                  (addIdRule(tag) >> refresh).toCallback
+                }
+              }
+            )
+          case Some((tag, matcher)) =>
+            def deleteMatcher() = Api.MatchRules.delete(Kind.forTag(tag), matcher)
+
+            dropdown(tag.toString)(
+              Tags.values.filterNot(_ == tag).toList.map { t =>
+                ant.Dropdown.Item(t.toString)(<.span("Change to ", <.b(t.toString))) {
+                  (deleteMatcher() >> addIdRule(t) >> refresh).toCallback
+                }
+              },
+              Option.when(matcher.id.isDefined) {
+                ant.Dropdown.Item("Remove tag")("Remove tag") {
+                  (deleteMatcher() >> refresh).toCallback
+                }
+              }
+            )
+        }
       }
       .filtering(t => state.info.tags.get(t.transactionId), PageParams.lensTagFilters)(
         FilterItem[Option[Tags.Value]](_.isEmpty, "No tag") +:

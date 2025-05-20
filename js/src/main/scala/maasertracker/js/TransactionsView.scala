@@ -1,6 +1,5 @@
 package maasertracker.js
 
-import org.scalajs.dom
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.extra.router.{BaseUrl, RouterCtl, RouterWithProps, RouterWithPropsConfigDsl, SetRouteVia}
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -11,21 +10,25 @@ import maasertracker.js.facades.ant
 
 object TransactionsView {
   private def refreshItem(item: PlaidItem) =
-    Api.getLinkToken(item)
+    Api.LinkTokens.get(item)
       .flatMap(Plaid.makeAndOpen)
 
   private def addBank() =
-    Api.getPlaidLinkToken
+    Api.LinkTokens.get
       .flatMap(Plaid.makeAndOpen)
-      .flatMap(result => Api.addItem(result.publicToken, result.metadata.institution))
+      .flatMap(result => Api.Items.add(result.publicToken, result.metadata.institution))
 
-  private def removeItem(item: PlaidItem) = Api.deleteItem(item)
+  private def removeItem(item: PlaidItem) = Api.Items.delete(item)
+
+  case class Props(state: Main.State, refresh: Callback) {
+    lazy val columns = new Columns(state, refresh.asAsyncCallback)
+  }
 
   private val component =
     ScalaComponent
       .builder[(Props, PageParams, RouterCtl[PageParams])]
       .render_P { case (props, pageParams, routerCtl) =>
-        import props.state
+        import props.{columns, state}
 
         val pageParamsStateSnapshot =
           StateSnapshot(pageParams) {
@@ -56,7 +59,7 @@ object TransactionsView {
                               )(s"Fix ${item.institution.name}")
                             }
                         ),
-                        ant.Dropdown(ant.Dropdown.Trigger.Click)(
+                        ant.Dropdown.click(
                           ant.Button(danger = true)(ant.Space()("Remove", <.i(^.cls := "fa fa-angle-down")))
                         )(
                           state.items.map { item =>
@@ -77,18 +80,18 @@ object TransactionsView {
                 ant.Table(state.info.transactions)(
                   columns =
                     List(
-                      props.dateColType,
-                      props.accountColType,
-                      props.nameColType,
-                      props.categoryColType,
-                      props.typeColType,
-                      props.amountColType,
-                      props.tagColType,
-                      props.maaserBalanceColType
+                      columns.dateColType,
+                      columns.accountColType,
+                      columns.nameColType,
+                      columns.categoryColType,
+                      columns.typeColType,
+                      columns.amountColType,
+                      columns.tagColType,
+                      columns.maaserBalanceColType
                     )
                       .map(ColType.toAnt(pageParamsStateSnapshot, _)),
                   onChange = { case (_, filters, _, _) =>
-                    routerCtl.set(props.filterColTypes.foldRight(pageParams)(_.applyFilters(filters)(_)))
+                    routerCtl.set(columns.filterColTypes.foldRight(pageParams)(_.applyFilters(filters)(_)))
                   },
                   pagination = ant.Table.Pagination.False,
                   rowClassName = {
@@ -136,7 +139,7 @@ object TransactionsView {
       dynRenderRP { (map, routerCtl, props) =>
         component.apply((
           props,
-          props.filterColTypes
+          props.columns.filterColTypes
             .foldRight(PageParams(sidePanelTransaction = map.collect { case ("show", v) => v }.lastOption)) {
               case (filteringColType, pageParams) =>
                 filteringColType.keysToPageParams(map.collect { case (k, v) if k == filteringColType.key => v })(
@@ -145,7 +148,7 @@ object TransactionsView {
             },
           routerCtl.contramap { pageParams =>
             pageParams.sidePanelTransaction.toSeq.map("show" -> _) ++
-              props.filterColTypes
+              props.columns.filterColTypes
                 .flatMap { filteringColType =>
                   filteringColType.pageParamsToKeys(pageParams).toSeq.map(filteringColType.key -> _)
                 }

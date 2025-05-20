@@ -22,8 +22,8 @@ object Main {
 
   private def loadData(setState: Either[String, State] => AsyncCallback[Unit],
                        retry: FiniteDuration = 1.seconds): AsyncCallback[Unit] =
-    Api.getTransactions
-      .zip(Api.getItems)
+    Api.Transactions.get
+      .zip(Api.Items.get)
       .flatMap { case (info, items) =>
         val categories =
           info
@@ -51,7 +51,7 @@ object Main {
           case Some(Left(error))  => <.div("ERROR: " + error)
           case Some(Right(state)) =>
             TransactionsView.router(
-              Props(
+              TransactionsView.Props(
                 state = state,
                 refresh = loadData(state => self.setStateAsync(Some(state))).toCallback
               )

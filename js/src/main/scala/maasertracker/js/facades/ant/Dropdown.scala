@@ -16,33 +16,47 @@ object Dropdown {
   case object Divider extends Child
 
   sealed abstract class Trigger(val repr: antdStrings.click | antdStrings.hover | antdStrings.contextMenu)
+  //noinspection ScalaWeakerAccess
   object Trigger {
     case object Click       extends Trigger(antdStrings.click)
-    //noinspection ScalaUnusedSymbol
     case object Hover       extends Trigger(antdStrings.hover)
     //noinspection ScalaUnusedSymbol
     case object ContextMenu extends Trigger(antdStrings.contextMenu)
   }
 
-  def apply(triggers: Trigger*)(content: TagMod*)(
-      menu: Seq[Child]) =
-    A.Dropdown
-      .apply(overlay =
-        A.Menu
+  class Builder(triggers: Seq[Trigger]) {
+    def apply(content: TagMod*)(menu: Seq[Child]) = {
+      val step1 =
+        A.Dropdown
           .apply(
-            menu.toReactFragment {
-              case Divider    => A.Menu.Divider()
-              case item: Item =>
-                A.Menu.Item
-                  .withKey(item.key)
-                  .apply(item.content)
-                  .danger(item.danger)
-                  .disabled(item.disabled)
-                  .onClick(_ => item.onClick)
-            }
+            overlay =
+              A.Menu
+                .apply(
+                  menu.toReactFragment {
+                    case Divider    => A.Menu.Divider()
+                    case item: Item =>
+                      A.Menu.Item
+                        .withKey(item.key)
+                        .apply(item.content)
+                        .danger(item.danger)
+                        .disabled(item.disabled)
+                        .onClick(_ => item.onClick)
+                  }
+                )
+                .rawElement
           )
-          .rawElement
-      )
-      .trigger(triggers.toJSArray.map(_.repr))
-      .apply(content*)
+          .apply(content*)
+
+      if (triggers == null)
+        step1
+      else
+        step1
+          .trigger(triggers.toJSArray.map(_.repr))
+    }
+  }
+
+  def apply(triggers: Seq[Trigger] = Seq(Trigger.Hover)): Builder = new Builder(triggers)
+
+  def click = apply(List(Trigger.Click))
+  def hover = apply(List(Trigger.Hover))
 }

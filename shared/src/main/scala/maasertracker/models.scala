@@ -3,11 +3,10 @@ package maasertracker
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-import scala.math.Ordering.Implicits.infixOrderingOps
-
 import cats.implicits.*
 import io.circe.Codec
 import io.circe.generic.JsonCodec
+import maasertracker.generated.models.MatchRuleRow
 
 @JsonCodec
 case class PlaidError(error_type: String, error_code: String, error_message: String)
@@ -41,6 +40,25 @@ object Tags extends Enumeration {
   val Income, Exempted, Maaser = Value
 }
 
+sealed abstract class Kind(val name: String)
+object Kind {
+  case object Transfer    extends Kind("transfer")
+  case object Income      extends Kind("income")
+  case object Exemption   extends Kind("exemption")
+  case object Fulfillment extends Kind("fulfillment")
+
+  val values = List(Transfer, Income, Exemption, Fulfillment)
+
+  def withName(name: String): Option[Kind] = values.find(_.name == name)
+
+  def forTag(tag: Tags.Value): Kind =
+    tag match {
+      case Tags.Income   => Income
+      case Tags.Exempted => Exemption
+      case Tags.Maaser   => Fulfillment
+    }
+}
+
 @JsonCodec
 case class Transfer(withdrawal: Transaction, deposit: Transaction) {
   def toSeq = Seq(withdrawal, deposit)
@@ -53,6 +71,28 @@ case class TransactionMatcher(id: Option[String],
                               category: Option[Seq[String]],
                               minAmount: Option[BigDecimal],
                               maxAmount: Option[BigDecimal])
+object TransactionMatcher {
+  def fromRow(row: MatchRuleRow): TransactionMatcher =
+    TransactionMatcher(
+      id = row.isTransactionId,
+      institution = row.isInstitution,
+      description = row.isDescription,
+      category = row.isCategory.map(_.linesIterator.toSeq),
+      minAmount = row.minAmount,
+      maxAmount = row.maxAmount
+    )
+
+  def toRow(kind: String, matcher: TransactionMatcher): MatchRuleRow =
+    MatchRuleRow(
+      kind = kind,
+      isTransactionId = matcher.id,
+      isDescription = matcher.description,
+      isInstitution = matcher.institution,
+      isCategory = matcher.category.map(_.mkString("\n")),
+      minAmount = matcher.minAmount,
+      maxAmount = matcher.maxAmount
+    )
+}
 
 @JsonCodec
 case class Matchers(transfer: Seq[TransactionMatcher],
@@ -112,21 +152,28 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
     copy(transactions = removed)
   }
 
-  private def isIncome(tx: Transaction) = matchers.income.exists(matches(tx, _))
+  private class MatcherExtractor(matchers: Seq[TransactionMatcher]) {
+    def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher)] = matchers.find(matches(tx, _)).map(tx -> _)
+  }
 
-  private def isExempted(tx: Transaction) = matchers.nonMaaserIncome.exists(matches(tx, _))
+  private object AsIncome         extends MatcherExtractor(matchers.income)
+  private object AsExemptedIncome extends MatcherExtractor(matchers.nonMaaserIncome)
+  private object AsMaaserPayment  extends MatcherExtractor(matchers.maaserPayment) {
+    override def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher)] =
+      if (tx.amount <= 0) None
+      else super.unapply(tx)
+  }
 
-  private def isMaaserPayment(tx: Transaction) = tx.amount > 0 && matchers.maaserPayment.exists(matches(tx, _))
-
-  lazy val tags =
+  lazy val tagsAndMatchers: Map[String, (Tags.Value, TransactionMatcher)] =
     transactions
       .collect {
-        case Right(tx) if isMaaserPayment(tx) => tx.transactionId -> Tags.Maaser
-        case Right(tx) if isIncome(tx)        =>
-          tx.transactionId ->
-            (if (isExempted(tx)) Tags.Exempted else Tags.Income)
+        case Right(AsMaaserPayment(tx, matcher))  => (tx.transactionId, (Tags.Maaser, matcher))
+        case Right(AsExemptedIncome(tx, matcher)) => (tx.transactionId, (Tags.Exempted, matcher))
+        case Right(AsIncome(tx, matcher))         => (tx.transactionId, (Tags.Income, matcher))
       }
       .toMap
+
+  lazy val tags = tagsAndMatchers.view.mapValues(_._1).toMap
 
   lazy val maaserBalances = {
     val maaserBalances0 =
@@ -143,26 +190,6 @@ case class TransactionsInfo(accounts: Map[String, AccountInfo],
     maaserBalances0
       .collect { case (Some(id), d) => (id, d) }
       .toMap
-  }
-
-  def sorted =
-    copy(transactions = transactions.sortBy {
-      case Left(Transfer(withdrawal, deposit)) => (withdrawal.date min deposit.date) -> None
-      case Right(value)                        => value.date                         -> tags.get(value.transactionId)
-    })
-
-  def untilLastMaaserPayment = {
-    def loop(txs: List[TransactionsInfo.Item], maaserDate: Option[LocalDate] = None): List[TransactionsInfo.Item] =
-      txs match {
-        case Nil            => Nil
-        case Left(x) :: xs  => Left(x) :: loop(xs, None)
-        case Right(x) :: xs =>
-          if (maaserDate.exists(x.date < _)) Nil
-          else if (isMaaserPayment(x)) loop(xs, Some(x.date))
-          else Right(x) :: loop(xs, maaserDate)
-      }
-
-    copy(transactions = loop(transactions.toList))
   }
 }
 

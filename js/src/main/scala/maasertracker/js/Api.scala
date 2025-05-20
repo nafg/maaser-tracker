@@ -1,12 +1,26 @@
 package maasertracker.js
 
-import maasertracker.{AddItemRequest, Institution, PlaidItem, TransactionsInfo}
+import maasertracker.*
 
 object Api {
-  def getPlaidLinkToken                               = Ajax.get[String]("/api/plaid-link-token")
-  def getItems                                        = Ajax.get[Seq[PlaidItem]]("/api/items")
-  def getTransactions                                 = Ajax.get[TransactionsInfo]("/api/transactions")
-  def getLinkToken(item: PlaidItem)                   = Ajax.get[String](s"/api/linkToken/${item.itemId}")
-  def addItem(publicToken: String, inst: Institution) = Ajax.post[Unit]("/api/items", AddItemRequest(publicToken, inst))
-  def deleteItem(item: PlaidItem)                     = Ajax.delete(s"/api/items/${item.itemId}")
+  object LinkTokens {
+    def get                  = Ajax.get[String]("/api/plaid-link-token")
+    def get(item: PlaidItem) = Ajax.get[String](s"/api/linkToken/${item.itemId}")
+  }
+
+  object Items {
+    def get                                         = Ajax.get[Seq[PlaidItem]]("/api/items")
+    def add(publicToken: String, inst: Institution) = Ajax.post[Unit]("/api/items", AddItemRequest(publicToken, inst))
+    def delete(item: PlaidItem)                     = Ajax.delete(s"/api/items/${item.itemId}")
+  }
+
+  object Transactions {
+    def get = Ajax.get[TransactionsInfo]("/api/transactions")
+  }
+
+  object MatchRules {
+    def add(kind: Kind, matcher: TransactionMatcher)    = Ajax.post[Unit](s"/api/match-rules/${kind.name}/add", matcher)
+    def delete(kind: Kind, matcher: TransactionMatcher) =
+      Ajax.post[Unit](s"/api/match-rules/${kind.name}/delete", matcher)
+  }
 }
