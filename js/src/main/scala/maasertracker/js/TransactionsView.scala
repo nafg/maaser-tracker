@@ -55,7 +55,7 @@ object TransactionsView {
                         )("Add bank"),
                         <.div(
                           transactionsInfo.plaidItems
-                            .flatMap(item => transactionsInfo.transactions.errors.get(item.itemId).map(item -> _))
+                            .flatMap(item => transactionsInfo.plaidData.errors.get(item.itemId).map(item -> _))
                             .toTagMod { case (item, errors) =>
                               ant.Button(
                                 onClick = _ => (refreshItem(item) >> props.refresh.reloadTransactions).toCallback,
@@ -81,7 +81,7 @@ object TransactionsView {
                     )
                   )
                 ),
-                ant.Table(transactionsInfo.transactions.items)(
+                ant.Table(transactionsInfo.combinedItems)(
                   columns =
                     List(
                       columns.dateColType,
@@ -119,7 +119,7 @@ object TransactionsView {
                 TransactionRulePanel(
                   transaction =
                     pageParams.sidePanelTransaction.flatMap { id =>
-                      transactionsInfo.transactions.items.collectFirst {
+                      transactionsInfo.combinedItems.collectFirst {
                         case item @ Right(tx) if tx.transactionId == id                                            =>
                           item
                         case item @ Left(Transfer(tx1, tx2)) if tx1.transactionId == id || tx2.transactionId == id =>

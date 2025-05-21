@@ -72,16 +72,15 @@ object DownloadsDropdown {
     }
 
   def downloadDropdown(transactionsInfo: TransactionsInfo, items: Seq[PlaidItem]): VdomElement = {
-    implicit val headerEncoder =
-      new TransactionHeaderEncoder(transactionsInfo.transactions.accounts, transactionsInfo.tags)
+    val plaidData              = transactionsInfo.plaidData
+    implicit val headerEncoder = new TransactionHeaderEncoder(plaidData.accounts, transactionsInfo.tags)
 
     def downloadInstitutionItem(item: PlaidItem) =
       ant.Dropdown.Item(item.institution.institution_id)(item.institution.name) {
         download(
-          transactionsInfo.transactions.items
-            .flatMap(_.fold(_.toSeq, Seq(_)))
+          plaidData.transactions
             .filter { tx =>
-              transactionsInfo.transactions.accounts.byId(tx.accountId).institution.institution_id ==
+              plaidData.accounts.byId(tx.accountId).institution.institution_id ==
                 item.institution.institution_id
             },
           item.institution.name
@@ -90,7 +89,7 @@ object DownloadsDropdown {
 
     def downloadAllItem =
       ant.Dropdown.Item("all")("All - no transfers") {
-        download(transactionsInfo.transactions.items.flatMap(_.toOption), "all")
+        download(transactionsInfo.combinedItems.flatMap(_.toOption), "all")
       }
 
     ant.Dropdown.click(

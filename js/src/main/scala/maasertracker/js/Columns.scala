@@ -35,7 +35,7 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
 
   val accountColType =
     ColType("account", "Account")
-      .withRenderEach(t => accountLabel(transactionsInfo.transactions.accounts.byId(t.accountId)))
+      .withRenderEach(t => accountLabel(transactionsInfo.plaidData.accounts.byId(t.accountId)))
       .filtering(_.accountId)(FilterSpecs.accountFilterSpec)
 
   val nameColType = ColType("name", "Name").withRenderEach(_.name)
@@ -80,7 +80,13 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
             maxAmount = None
           )
 
-        def addIdRule(t: Tags.Value) = Api.MatchRules.add(Kind.forTag(t), idMatcher)
+        def addIdTagRule(t: Tags.Value) = Api.MatchRules.add(Kind.forTag(t), idMatcher)
+
+        val addTransferRuleItem =
+          ant.Dropdown.Item("Set to transfer")(<.span("Set to ", <.b("transfer"))) {
+            (Api.MatchRules.add(Kind.Transfer, idMatcher) >> refresh.reloadMatchers)
+              .toCallback
+          }
 
         val manageRulesItem =
           ant.Dropdown.Item("Manage rules")("Manage rules") {
@@ -88,12 +94,9 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
           }
 
         def dropdown(label: String)(firstItems: Iterable[ant.Dropdown.Child]*) = {
-          val firstItemsFlat = firstItems.toList.flatten
+          val firstItemsFlat = firstItems.toList.flatten :+ addTransferRuleItem
           ant.Dropdown.hover(ant.Button()(label))(
-            if (firstItemsFlat.isEmpty)
-              List(manageRulesItem)
-            else
-              firstItemsFlat ++ List(ant.Dropdown.Divider, manageRulesItem)
+            firstItemsFlat ++ List(ant.Dropdown.Divider, manageRulesItem)
           )
         }
 
@@ -102,7 +105,7 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
             dropdown("No tag")(
               Tags.values.toList.map { tag =>
                 ant.Dropdown.Item(tag.toString)(<.span("Set to ", <.b(tag.toString))) {
-                  (addIdRule(tag) >> refresh.reloadMatchers).toCallback
+                  (addIdTagRule(tag) >> refresh.reloadMatchers).toCallback
                 }
               }
             )
@@ -114,7 +117,7 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
               else
                 Tags.values.filterNot(_ == tag).toList.map { t =>
                   ant.Dropdown.Item(t.toString)(<.span("Change to ", <.b(t.toString))) {
-                    (deleteMatcher() >> addIdRule(t) >> refresh.reloadMatchers).toCallback
+                    (deleteMatcher() >> addIdTagRule(t) >> refresh.reloadMatchers).toCallback
                   }
                 } ++
                   Option.when(matcher.id.isDefined) {

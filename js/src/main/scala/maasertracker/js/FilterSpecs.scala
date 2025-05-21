@@ -5,7 +5,7 @@ import maasertracker.Tags
 object FilterSpecs {
   val accountFilterSpec =
     FilterSpec("account", PageParams.lensAccountFilters) { info =>
-      info.transactions.accounts.accounts.map { case (item, accounts) =>
+      info.plaidData.accounts.accounts.map { case (item, accounts) =>
         FilterItem[String](
           item.institution.name,
           accounts

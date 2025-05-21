@@ -129,14 +129,13 @@ final class PlaidService(val plaidApi: PlaidApi) {
       result <- items.traverse(item => fetch(item, startDate))
       (errors, successes)               = result.partitionMap(identity)
       (accounts, txs)                   = successes.unzip
-    } yield Transactions(
+    } yield PlaidData(
       accounts = AccountInfos(accounts),
-      items =
+      transactions =
         txs
           .flatten
           .sortBy(_.date)
-          .dropWhile(_.date.isBefore(startDate))
-          .map(Right(_)),
+          .dropWhile(_.date.isBefore(startDate)),
       startingMaaserBalance = initialMaaserBalance.doubleValue,
       errors = errors.toMap.map { case (k, v) => k.itemId -> v }
     )

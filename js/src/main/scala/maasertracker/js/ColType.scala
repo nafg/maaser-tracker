@@ -11,7 +11,7 @@ import io.github.nafg.antd.facade.antd.antdStrings.tree
 import io.github.nafg.antd.facade.antd.libTableInterfaceMod.ColumnType
 import io.github.nafg.antd.facade.rcTable.libInterfaceMod.RenderedCell
 
-import maasertracker.{Transaction, Transactions, TransactionsInfo, Transfer}
+import maasertracker.{Transaction, PlaidData, TransactionsInfo, Transfer}
 
 sealed trait ColType
 object ColType {
@@ -20,7 +20,7 @@ object ColType {
   case class Simple(
       key: String,
       title: String,
-      render: Transactions.Item => StateSnapshot[PageParams] => VdomNode = _ => _ => EmptyVdom)
+      render: PlaidData.Item => StateSnapshot[PageParams] => VdomNode = _ => _ => EmptyVdom)
       extends ColType {
 
     def withRender(single: Transaction => StateSnapshot[PageParams] => VdomNode,
@@ -53,16 +53,16 @@ object ColType {
       extends ColType
 
   private def toAnt(pageParams: StateSnapshot[PageParams], simple: Simple) =
-    ColumnType[Transactions.Item]()
+    ColumnType[PlaidData.Item]()
       .setKey(simple.key)
       .setTitle(simple.title)
       .setRender((_, t, _) =>
-        simple.render(t)(pageParams).rawNode.asInstanceOf[Node | RenderedCell[Transactions.Item]]
+        simple.render(t)(pageParams).rawNode.asInstanceOf[Node | RenderedCell[PlaidData.Item]]
       )
 
   def toAnt(info: TransactionsInfo,
             pageParams: StateSnapshot[PageParams],
-            colType: ColType): ColumnType[Transactions.Item] =
+            colType: ColType): ColumnType[PlaidData.Item] =
     colType match {
       case simple: Simple                              => toAnt(pageParams, simple)
       case ColType.Filtering(colType, filterSpec, get) =>

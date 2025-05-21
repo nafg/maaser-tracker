@@ -3,13 +3,13 @@ package maasertracker.js
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, ScalaComponent}
 
-import maasertracker.{Transactions, TransactionsInfo}
+import maasertracker.{PlaidData, TransactionsInfo}
 import maasertracker.js.facades.ant
 import maasertracker.js.facades.ant.Drawer
 
 object TransactionRulePanel {
   case class Props(
-      transaction: Option[Transactions.Item],
+      transaction: Option[PlaidData.Item],
       visible: Boolean,
       transactionsInfo: TransactionsInfo,
       onClose: Callback
@@ -62,7 +62,7 @@ object TransactionRulePanel {
     .build
 
   def apply(
-      transaction: Option[Transactions.Item],
+      transaction: Option[PlaidData.Item],
       visible: Boolean,
       transactionsInfo: TransactionsInfo,
       onClose: Callback

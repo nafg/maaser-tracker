@@ -9,19 +9,16 @@ import cats.implicits.toFunctorOps
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
-case class TransactionsInfo private (transactions: Transactions, matchers: Matchers) {
+case class TransactionsInfo private (plaidData: PlaidData, matchers: Matchers) {
   private def matches(tx: Transaction, matcher: TransactionMatcher) =
     matcher.id.forall(_ == tx.transactionId) &&
-      matcher.institution.forall(_ == transactions.accounts.byId(tx.accountId).institution.name) &&
+      matcher.institution.forall(_ == plaidData.accounts.byId(tx.accountId).institution.name) &&
       matcher.description.forall(_.trim == tx.name.trim) &&
       matcher.category.forall(tx.category.startsWith(_)) &&
       matcher.minAmount.forall(tx.amount >= _) &&
       matcher.maxAmount.forall(tx.amount <= _)
 
-  def copy(transactions: Transactions = transactions, matchers: Matchers = matchers) =
-    new TransactionsInfo(transactions, matchers)
-
-  private def combineTransfers = {
+  lazy val combinedItems = {
     def canBeTransfer(tx: Transaction) = matchers.transfer.exists(matches(tx, _))
 
     def isTransferPair(a: Transaction, b: Transaction) =
@@ -30,11 +27,10 @@ case class TransactionsInfo private (transactions: Transactions, matchers: Match
         a.amount == -b.amount &&
         ChronoUnit.DAYS.between(a.date, b.date).abs < 7
 
-    def loop(txs: List[Transactions.Item]): List[Transactions.Item] =
+    def loop(txs: List[Transaction]): List[PlaidData.Item] =
       txs match {
-        case Nil            => Nil
-        case Left(_) :: as  => loop(as)
-        case Right(a) :: as =>
+        case Nil     => Nil
+        case a :: as =>
           object TransferMatch {
             def unapply(b: Transaction): Option[Transfer] =
               (isTransferPair(a, b), math.signum(a.amount), math.signum(b.amount)) match {
@@ -44,20 +40,22 @@ case class TransactionsInfo private (transactions: Transactions, matchers: Match
               }
           }
 
-          def loop2(as2: List[Transactions.Item]): (Transactions.Item, List[Transactions.Item]) =
+          def loop2(as2: List[Transaction]): (PlaidData.Item, List[Transaction]) =
             as2 match {
-              case Nil                                    => Right(a)       -> Nil
-              case Right(TransferMatch(transfer)) :: as22 => Left(transfer) -> as22
-              case a2 :: as22                             => loop2(as22).map(a2 :: _)
+              case Nil                             => Right(a)       -> Nil
+              case TransferMatch(transfer) :: as22 => Left(transfer) -> as22
+              case a2 :: as22                      => loop2(as22).map(a2 :: _)
             }
 
           val (x, xx) = loop2(as)
           x :: loop(xx)
       }
 
-    val removed = loop(transactions.items.toList)
-    copy(transactions = transactions.copy(items = removed))
+    loop(plaidData.transactions.toList)
   }
+
+  def copy(transactions: PlaidData = plaidData, matchers: Matchers = matchers) =
+    new TransactionsInfo(transactions, matchers)
 
   private class MatcherExtractor(matchers: Seq[TransactionMatcher]) {
     def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher)] = matchers.find(matches(tx, _)).map(tx -> _)
@@ -72,7 +70,7 @@ case class TransactionsInfo private (transactions: Transactions, matchers: Match
   }
 
   lazy val tagsAndMatchers: Map[String, (Tags.Value, TransactionMatcher)] =
-    transactions.items
+    combinedItems
       .collect {
         case Right(AsMaaserPayment(tx, matcher))  => (tx.transactionId, (Tags.Maaser, matcher))
         case Right(AsExemptedIncome(tx, matcher)) => (tx.transactionId, (Tags.Exempted, matcher))
@@ -84,7 +82,7 @@ case class TransactionsInfo private (transactions: Transactions, matchers: Match
 
   lazy val maaserBalances = {
     val maaserBalances0 =
-      transactions.items.reverse.scanRight(Option.empty[String] -> transactions.startingMaaserBalance) {
+      combinedItems.reverse.scanRight(Option.empty[String] -> plaidData.startingMaaserBalance) {
         case (Left(_), (_, m))   => None -> m
         case (Right(tx), (_, m)) =>
           Some(tx.transactionId) ->
@@ -99,21 +97,18 @@ case class TransactionsInfo private (transactions: Transactions, matchers: Match
       .toMap
   }
 
-  lazy val plaidItems = transactions.accounts.items
+  lazy val plaidItems = plaidData.accounts.items
 
   lazy val categories =
-    transactions.items
-      .flatMap {
-        case Right(tx)                => Seq(tx.category)
-        case Left(Transfer(tx1, tx2)) => Seq(tx1.category, tx2.category)
-      }
+    plaidData.transactions
+      .map(_.category)
       .to(SortedSet)
       .toSeq
 
 }
 object TransactionsInfo {
-  def apply(transactions: Transactions, matchers: Matchers): TransactionsInfo =
-    new TransactionsInfo(transactions, matchers).combineTransfers
+  def apply(transactions: PlaidData, matchers: Matchers): TransactionsInfo =
+    new TransactionsInfo(transactions, matchers)
 
   implicit val codecTransactionsInfo: Codec[TransactionsInfo] = deriveCodec
 }

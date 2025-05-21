@@ -105,11 +105,11 @@ case class Matchers(transfer: Seq[TransactionMatcher],
                     maaserPayment: Seq[TransactionMatcher])
 
 @JsonCodec
-case class Transactions(accounts: AccountInfos,
-                        items: Seq[Transactions.Item],
-                        startingMaaserBalance: Double,
-                        errors: Map[String, Seq[PlaidError]])
-object Transactions {
+case class PlaidData(accounts: AccountInfos,
+                     transactions: Seq[Transaction],
+                     startingMaaserBalance: Double,
+                     errors: Map[String, Seq[PlaidError]])
+object PlaidData {
   type Item = Either[Transfer, Transaction]
 
   implicit def transferOrTransaction: Codec.AsObject[Item] =

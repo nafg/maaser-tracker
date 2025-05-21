@@ -15,7 +15,7 @@ object Api {
   }
 
   object Transactions {
-    def get = Ajax.get[Transactions]("/api/transactions")
+    def get = Ajax.get[PlaidData]("/api/transactions")
   }
 
   object MatchRules {
