@@ -6,10 +6,8 @@ import scala.scalajs.js.JSConverters.JSRichIterableOnce
 import japgolly.scalajs.react.vdom.html_<^.*
 import io.github.nafg.antd.facade.antd.libTableInterfaceMod.ColumnFilterItem
 
-case class FilterItem[A](test: A => Boolean,
-                         text: String,
-                         children: Seq[FilterItem[A]] = Nil,
-                         hideTransfers: Boolean = false)
+case class FilterItem[A](text: String, children: Seq[FilterItem[A]] = Nil, hideTransfers: Boolean = false)(
+    val test: A => Boolean)
 
 case class FilterItems[A](items: Iterable[FilterItem[A]]) {
   private def mkKeys(items: Iterable[FilterItem[A]]): Map[FilterItem[A], String] =

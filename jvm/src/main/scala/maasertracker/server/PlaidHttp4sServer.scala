@@ -1,6 +1,9 @@
 package maasertracker.server
 
+import java.util
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.chaining.scalaUtilChainingOps
 
 import slick.jdbc.DataSourceJdbcDataSource
 import slick.jdbc.hikaricp.HikariCPJdbcDataSource
@@ -8,7 +11,10 @@ import slick.jdbc.hikaricp.HikariCPJdbcDataSource
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
+import com.plaid.client.ApiClient
 import com.plaid.client.model.{ItemRemoveRequest, Products}
+import com.plaid.client.request.PlaidApi
+import com.typesafe.config.ConfigFactory
 import io.circe.syntax.*
 import maasertracker.generated.models.{PlaidInstitutionRow, PlaidItemRow}
 import maasertracker.generated.tables.SlickProfile.api.*
@@ -28,22 +34,18 @@ import org.http4s.{HttpRoutes, Response}
 object PlaidHttp4sServer extends IOApp {
   case class ResponseFailed(errorBody: okhttp3.Response) extends RuntimeException
 
-  private def loadItems =
-    Tables.PlaidItemTable.Q.join(Tables.PlaidInstitutionTable.Q).on(_.institution === _.lookup).result
-      .map(_.map { case (item, institution) =>
-        PlaidItem(
-          itemId = item.value.itemId,
-          accessToken = item.value.accessToken,
-          institution = Institution(name = institution.value.name, institution_id = institution.value.institutionId)
-        )
-      })
-
-  private def httpApp(plaidService: PlaidService) = {
+  private def plaidRoutes(plaidService: PlaidService) = {
     import plaidService.createLinkToken
 
-    val router = Router(
-      "app" -> resourceServiceBuilder[IO]("public").toRoutes
-    )
+    def loadItems =
+      Tables.PlaidItemTable.Q.join(Tables.PlaidInstitutionTable.Q).on(_.institution === _.lookup).result
+        .map(_.map { case (item, institution) =>
+          PlaidItem(
+            itemId = item.value.itemId,
+            accessToken = item.value.accessToken,
+            institution = Institution(name = institution.value.name, institution_id = institution.value.institutionId)
+          )
+        })
 
     def withItem(itemId: String)(f: PlaidItemRow => IO[Response[IO]]): IO[Response[IO]] =
       Tables.PlaidItemTable.Q.filter(_.itemId === itemId).result.headOption.toIO.flatMap {
@@ -53,30 +55,30 @@ object PlaidHttp4sServer extends IOApp {
 
     def createLinkTokenRequest = createLinkToken(List(Products.AUTH, Products.TRANSACTIONS))
 
-    val routes = HttpRoutes.of[IO] {
-      case GET -> Root / "plaid-link-token.jsonp"               =>
+    HttpRoutes.of[IO] {
+      case GET -> Root / "plaid-link-token.jsonp" =>
         callAsync(createLinkTokenRequest)
           .flatMap(res => Ok(s"const plaidLinkToken = '${res.getLinkToken}'"))
-      case GET -> Root / "plaid-link-token"                     =>
+      case GET -> Root / "plaid-link-token"       =>
         callAsync(createLinkTokenRequest)
           .flatMap(res => Ok(res.getLinkToken.asJson))
-      case GET -> Root / "linkToken" / itemId                   =>
+      case GET -> Root / "linkToken" / itemId     =>
         withItem(itemId) { item =>
           callAsync(createLinkToken(Nil, _.accessToken(item.accessToken)))
             .flatMap(res => Ok(res.getLinkToken.asJson))
             .recoverWith { case ResponseFailed(eb) => BadRequest(eb.toString) }
         }
-      case GET -> Root / "items"                                =>
+      case GET -> Root / "items"                  =>
         loadItems
           .toIO
           .flatMap(results => Ok(results.map(_.toShared)))
-      case DELETE -> Root / "items" / itemId                    =>
+      case DELETE -> Root / "items" / itemId      =>
         withItem(itemId) { item =>
           callAsync(plaidService.plaidApi.itemRemove(new ItemRemoveRequest().accessToken(item.accessToken))) >>
             Tables.PlaidItemTable.Q.filter(_.itemId === itemId).delete.toIO >>
             Ok()
         }
-      case req @ POST -> Root / "items"                         =>
+      case req @ POST -> Root / "items"           =>
         def getOrInsert[A](table: EntityTableModule[Long, A])(compare: (table.Row, A) => Rep[Boolean])(a: A) =
           table.Q
             .filter(compare(_, a))
@@ -103,24 +105,38 @@ object PlaidHttp4sServer extends IOApp {
             getOrInsert(Tables.PlaidItemTable)(_.accessToken === _.accessToken)(
               PlaidItemRow(itemId = item.itemId, accessToken = item.accessToken, institution = institution)
             ).toIO
-          res            <- Ok(().asJson)
+          res            <- Ok(())
         } yield res)
           .handleErrorWith { t =>
             t.printStackTrace()
             InternalServerError(t.getLocalizedMessage)
           }
-      case GET -> Root / "transactions"                         =>
+      case GET -> Root / "transactions"           =>
         for {
-          items            <- loadItems.toIO
-          transactionsInfo <- plaidService.transactionsInfo(items)
-          res              <- Ok(transactionsInfo)
+          items        <- loadItems.toIO
+          transactions <- plaidService.loadTransactions(items)
+          res          <- Ok(transactions)
+        } yield res
+    }
+  }
+
+  private def httpApp(plaidService: PlaidService) = {
+    val router = Router(
+      "app" -> resourceServiceBuilder[IO]("public").toRoutes
+    )
+
+    val matchRuleRoutes = HttpRoutes.of[IO] {
+      case GET -> Root / "match-rules"                          =>
+        for {
+          rules <- MatchRulesService.load
+          res   <- Ok(rules.matchers)
         } yield res
       case req @ POST -> Root / "match-rules" / kind / "add"    =>
         for {
           matcher <- req.as[TransactionMatcher]
           row = TransactionMatcher.toRow(kind, matcher)
           _   <- Tables.MatchRuleTable.Q.insert(row).toIO
-          res <- Ok(().asJson)
+          res <- Ok(())
         } yield res
       case req @ POST -> Root / "match-rules" / kind / "delete" =>
         for {
@@ -133,11 +149,18 @@ object PlaidHttp4sServer extends IOApp {
         } yield res
     }
 
-    (router <+> routes)
+    (router <+> plaidRoutes(plaidService) <+> matchRuleRoutes)
       .orNotFound
   }
 
+  lazy val plaidApi = {
+    val config = ConfigFactory.defaultApplication().getConfig("plaid")
+    new ApiClient(util.Map.of("clientId", config.getString("clientId"), "secret", config.getString("secret")))
+      .tap(_.setPlaidAdapter(ApiClient.Production))
+      .createService(classOf[PlaidApi])
+  }
   private def app =
+
     EmberServerBuilder.default[IO]
       .withHost(host"0.0.0.0")
       .withPort(port"9090")

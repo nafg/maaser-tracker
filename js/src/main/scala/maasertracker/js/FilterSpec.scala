@@ -6,12 +6,13 @@ import scala.scalajs.js.|
 import io.github.nafg.antd.facade.antd.libTableInterfaceMod.FilterValue
 import io.github.nafg.antd.facade.std.Record
 
+import maasertracker.TransactionsInfo
 import monocle.Lens
 
 case class FilterSpec[P, A](key: String,
                             lens: Lens[P, Set[FilterItem[A]]],
-                            filterItemsFunc: Main.State => FilterItems[A]) {
-  def applyFilters(state: Main.State, filters: Record[String, FilterValue | Null]): P => P = {
+                            filterItemsFunc: TransactionsInfo => FilterItems[A]) {
+  def applyFilters(state: TransactionsInfo, filters: Record[String, FilterValue | Null]): P => P = {
     val filterItems    = filterItemsFunc(state)
     val decodedFilters =
       filters.get(key)
@@ -22,23 +23,23 @@ case class FilterSpec[P, A](key: String,
     lens.replace(decodedFilters)
   }
 
-  def pageParamsToKeys(state: Main.State, pageParams: P) = {
+  def pageParamsToKeys(state: TransactionsInfo, pageParams: P) = {
     val filterItems = filterItemsFunc(state)
     lens.get(pageParams).map(filterItems.toKey)
   }
 
-  def keysToPageParams(state: Main.State, keys: Iterable[String]) = {
+  def keysToPageParams(state: TransactionsInfo, keys: Iterable[String]) = {
     val filterItems = filterItemsFunc(state)
     lens.replace(keys.flatMap(filterItems.fromKey.get).toSet)
   }
 }
-object FilterSpec                                                          {
+object FilterSpec                                                                {
   def apply[P, A](key: String, lens: Lens[P, Set[FilterItem[A]]])(
-      filterItems: Main.State => Iterable[FilterItem[A]],
+      filterItems: TransactionsInfo => Iterable[FilterItem[A]],
       @unused dummy: Null = null): FilterSpec[P, A] =
     new FilterSpec(key, lens, state => FilterItems(filterItems(state)))
 
-  def applyFilters[P](state: Main.State,
+  def applyFilters[P](state: TransactionsInfo,
                       filters: Record[String, FilterValue | Null],
                       filterSpecs: Seq[FilterSpec[P, ?]]): P => P =
     pageParams =>

@@ -11,8 +11,7 @@ import io.github.nafg.antd.facade.antd.antdStrings.tree
 import io.github.nafg.antd.facade.antd.libTableInterfaceMod.ColumnType
 import io.github.nafg.antd.facade.rcTable.libInterfaceMod.RenderedCell
 
-import maasertracker.TransactionsInfo.Item
-import maasertracker.{Transaction, TransactionsInfo, Transfer}
+import maasertracker.{Transaction, Transactions, TransactionsInfo, Transfer}
 
 sealed trait ColType
 object ColType {
@@ -21,7 +20,7 @@ object ColType {
   case class Simple(
       key: String,
       title: String,
-      render: TransactionsInfo.Item => StateSnapshot[PageParams] => VdomNode = _ => _ => EmptyVdom)
+      render: Transactions.Item => StateSnapshot[PageParams] => VdomNode = _ => _ => EmptyVdom)
       extends ColType {
 
     def withRender(single: Transaction => StateSnapshot[PageParams] => VdomNode,
@@ -54,18 +53,20 @@ object ColType {
       extends ColType
 
   private def toAnt(pageParams: StateSnapshot[PageParams], simple: Simple) =
-    ColumnType[Item]()
+    ColumnType[Transactions.Item]()
       .setKey(simple.key)
       .setTitle(simple.title)
       .setRender((_, t, _) =>
-        simple.render(t)(pageParams).rawNode.asInstanceOf[Node | RenderedCell[Item]]
+        simple.render(t)(pageParams).rawNode.asInstanceOf[Node | RenderedCell[Transactions.Item]]
       )
 
-  def toAnt(state: Main.State, pageParams: StateSnapshot[PageParams], colType: ColType): ColumnType[Item] =
+  def toAnt(info: TransactionsInfo,
+            pageParams: StateSnapshot[PageParams],
+            colType: ColType): ColumnType[Transactions.Item] =
     colType match {
       case simple: Simple                              => toAnt(pageParams, simple)
       case ColType.Filtering(colType, filterSpec, get) =>
-        val filterItems = filterSpec.filterItemsFunc(state)
+        val filterItems = filterSpec.filterItemsFunc(info)
         toAnt(pageParams, colType)
           .setFilterMode(tree)
           .setFilteredValue(filterSpec.lens.get(pageParams.value).toJSArray.map(filterItems.toKey))

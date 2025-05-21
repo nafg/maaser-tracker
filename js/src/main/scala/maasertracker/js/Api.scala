@@ -15,10 +15,11 @@ object Api {
   }
 
   object Transactions {
-    def get = Ajax.get[TransactionsInfo]("/api/transactions")
+    def get = Ajax.get[Transactions]("/api/transactions")
   }
 
   object MatchRules {
+    def get                                             = Ajax.get[Matchers]("/api/match-rules")
     def add(kind: Kind, matcher: TransactionMatcher)    = Ajax.post[Unit](s"/api/match-rules/${kind.name}/add", matcher)
     def delete(kind: Kind, matcher: TransactionMatcher) =
       Ajax.post[Unit](s"/api/match-rules/${kind.name}/delete", matcher)

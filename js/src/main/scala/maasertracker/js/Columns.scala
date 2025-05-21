@@ -1,13 +1,12 @@
 package maasertracker.js
 
-import japgolly.scalajs.react.AsyncCallback
 import japgolly.scalajs.react.ReactMonocle.MonocleReactExt_StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 
 import maasertracker.js.facades.ant
-import maasertracker.{AccountInfo, Kind, Tags, TransactionMatcher}
+import maasertracker.*
 
-class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
+class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
   private def formatDollars(amount: Double) = f"$$$amount%,.2f"
 
   private def accountNameParts(acct: AccountInfo) = {
@@ -36,7 +35,7 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
 
   val accountColType =
     ColType("account", "Account")
-      .withRenderEach(t => accountLabel(state.info.accounts(t.accountId)))
+      .withRenderEach(t => accountLabel(transactionsInfo.transactions.accounts.byId(t.accountId)))
       .filtering(_.accountId)(FilterSpecs.accountFilterSpec)
 
   val nameColType = ColType("name", "Name").withRenderEach(_.name)
@@ -98,12 +97,12 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
           )
         }
 
-        state.info.tagsAndMatchers.get(tx.transactionId) match {
+        transactionsInfo.tagsAndMatchers.get(tx.transactionId) match {
           case None                 =>
             dropdown("No tag")(
               Tags.values.toList.map { tag =>
                 ant.Dropdown.Item(tag.toString)(<.span("Set to ", <.b(tag.toString))) {
-                  (addIdRule(tag) >> refresh).toCallback
+                  (addIdRule(tag) >> refresh.reloadMatchers).toCallback
                 }
               }
             )
@@ -115,24 +114,24 @@ class Columns(state: Main.State, refresh: AsyncCallback[Unit]) {
               else
                 Tags.values.filterNot(_ == tag).toList.map { t =>
                   ant.Dropdown.Item(t.toString)(<.span("Change to ", <.b(t.toString))) {
-                    (deleteMatcher() >> addIdRule(t) >> refresh).toCallback
+                    (deleteMatcher() >> addIdRule(t) >> refresh.reloadMatchers).toCallback
                   }
                 } ++
                   Option.when(matcher.id.isDefined) {
                     ant.Dropdown.Item("Remove tag")("Remove tag") {
-                      (deleteMatcher() >> refresh).toCallback
+                      (deleteMatcher() >> refresh.reloadMatchers).toCallback
                     }
                   }
             )
         }
       }
-      .filtering(t => state.info.tags.get(t.transactionId))(FilterSpecs.tagFilterSpec)
+      .filtering(t => transactionsInfo.tags.get(t.transactionId))(FilterSpecs.tagFilterSpec)
 
   val maaserBalanceColType =
     ColType("maaserBalance", "Maaser balance")
       .withRender { t => _ =>
         formatDollars {
-          state.info.maaserBalances(t.transactionId)
+          transactionsInfo.maaserBalances(t.transactionId)
         }
       }
 }

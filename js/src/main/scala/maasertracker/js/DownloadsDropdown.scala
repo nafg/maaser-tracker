@@ -15,7 +15,7 @@ import maasertracker.*
 import maasertracker.js.facades.ant
 
 object DownloadsDropdown {
-  private class TransactionHeaderEncoder(accounts: Map[String, AccountInfo], tags: Map[String, Tags.Value])
+  private class TransactionHeaderEncoder(accounts: AccountInfos, tags: Map[String, Tags.Value])
       extends HeaderEncoder[Transaction] {
     override val header: Option[Seq[String]] =
       Some(
@@ -35,7 +35,7 @@ object DownloadsDropdown {
       )
 
     override val rowEncoder: RowEncoder[Transaction] = { (d: Transaction) =>
-      val accountInfo = accounts(d.accountId)
+      val accountInfo = accounts.byId(d.accountId)
       List(
         accountInfo.institution.name,
         accountInfo.account.name,
@@ -72,15 +72,16 @@ object DownloadsDropdown {
     }
 
   def downloadDropdown(transactionsInfo: TransactionsInfo, items: Seq[PlaidItem]): VdomElement = {
-    implicit val headerEncoder = new TransactionHeaderEncoder(transactionsInfo.accounts, transactionsInfo.tags)
+    implicit val headerEncoder =
+      new TransactionHeaderEncoder(transactionsInfo.transactions.accounts, transactionsInfo.tags)
 
     def downloadInstitutionItem(item: PlaidItem) =
       ant.Dropdown.Item(item.institution.institution_id)(item.institution.name) {
         download(
-          transactionsInfo.transactions
+          transactionsInfo.transactions.items
             .flatMap(_.fold(_.toSeq, Seq(_)))
             .filter { tx =>
-              transactionsInfo.accounts(tx.accountId).institution.institution_id ==
+              transactionsInfo.transactions.accounts.byId(tx.accountId).institution.institution_id ==
                 item.institution.institution_id
             },
           item.institution.name
@@ -89,7 +90,7 @@ object DownloadsDropdown {
 
     def downloadAllItem =
       ant.Dropdown.Item("all")("All - no transfers") {
-        download(transactionsInfo.transactions.flatMap(_.toOption), "all")
+        download(transactionsInfo.transactions.items.flatMap(_.toOption), "all")
       }
 
     ant.Dropdown.click(

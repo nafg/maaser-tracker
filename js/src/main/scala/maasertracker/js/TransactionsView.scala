@@ -21,16 +21,18 @@ object TransactionsView {
   private def removeItem(item: PlaidItem) = Api.Items.delete(item)
 
   case class Props(routerProps: Router.Props, pageParams: PageParams, routerCtl: RouterCtl[PageParams]) {
-    def state        = routerProps.state
     def refresh      = routerProps.refresh
-    lazy val columns = new Columns(state, refresh.asAsyncCallback)
+    def info         = routerProps.info
+    lazy val columns = new Columns(info, refresh)
   }
 
-  val component =
+  val component = {
     ScalaComponent
       .builder[Props]
       .render_P { case props @ Props(_, pageParams, routerCtl) =>
-        import props.{columns, state}
+        import props.columns
+
+        val transactionsInfo = props.info
 
         val pageParamsStateSnapshot =
           StateSnapshot(pageParams) {
@@ -49,14 +51,14 @@ object TransactionsView {
                       ant.Space()(
                         ant.Button(
                           buttonType = ant.Button.Type.Primary,
-                          onClick = _ => addBank().flatMapSync(_ => props.refresh).toCallback
+                          onClick = _ => (addBank() >> props.refresh.reloadTransactions).toCallback
                         )("Add bank"),
                         <.div(
-                          state.items
-                            .flatMap(item => state.info.errors.get(item.itemId).map(item -> _))
+                          transactionsInfo.plaidItems
+                            .flatMap(item => transactionsInfo.transactions.errors.get(item.itemId).map(item -> _))
                             .toTagMod { case (item, errors) =>
                               ant.Button(
-                                onClick = _ => refreshItem(item).flatMapSync(_ => props.refresh).toCallback,
+                                onClick = _ => (refreshItem(item) >> props.refresh.reloadTransactions).toCallback,
                                 title = errors.map(_.error_message).mkString("\n")
                               )(s"Fix ${item.institution.name}")
                             }
@@ -64,22 +66,22 @@ object TransactionsView {
                         ant.Dropdown.click(
                           ant.Button(danger = true)(ant.Space()("Remove", <.i(^.cls := "fa fa-angle-down")))
                         )(
-                          state.items.map { item =>
+                          transactionsInfo.plaidItems.map { item =>
                             ant.Dropdown.Item(item.itemId)(item.institution.name) {
                               CallbackTo.confirm("Really remove " + item.institution.name + "?")
                                 .flatMap {
                                   case false => Callback.empty
-                                  case true  => removeItem(item).flatMapSync(_ => props.refresh).toCallback
+                                  case true  => (removeItem(item) >> props.refresh.reloadTransactions).toCallback
                                 }
                             }
                           }
                         ),
-                        DownloadsDropdown.downloadDropdown(state.info, state.items)
+                        DownloadsDropdown.downloadDropdown(transactionsInfo, transactionsInfo.plaidItems)
                       )
                     )
                   )
                 ),
-                ant.Table(state.info.transactions)(
+                ant.Table(transactionsInfo.transactions.items)(
                   columns =
                     List(
                       columns.dateColType,
@@ -91,14 +93,17 @@ object TransactionsView {
                       columns.tagColType,
                       columns.maaserBalanceColType
                     )
-                      .map(ColType.toAnt(state, pageParamsStateSnapshot, _)),
-                  onChange = { case (_, filters, _, _) =>
-                    routerCtl.set(FilterSpec.applyFilters(state, filters, FilterSpecs.filterSpecs)(pageParams))
+                      .map(ColType.toAnt(transactionsInfo, pageParamsStateSnapshot, _)),
+                  onChange = {
+                    case (_, filters, _, _) =>
+                      routerCtl.set(
+                        FilterSpec.applyFilters(transactionsInfo, filters, FilterSpecs.filterSpecs)(pageParams)
+                      )
                   },
                   pagination = ant.Table.Pagination.False,
                   rowClassName = {
                     case (Right(tx), _) =>
-                      state.info.tags.get(tx.transactionId) match {
+                      transactionsInfo.tags.get(tx.transactionId) match {
                         case None      => ""
                         case Some(tag) => "tag-" + tag.toString
                       }
@@ -114,21 +119,22 @@ object TransactionsView {
                 TransactionRulePanel(
                   transaction =
                     pageParams.sidePanelTransaction.flatMap { id =>
-                      state.info.transactions.collectFirst {
-                        case item @ Right(tx) if tx.transactionId == id => item
+                      transactionsInfo.transactions.items.collectFirst {
+                        case item @ Right(tx) if tx.transactionId == id                                            =>
+                          item
                         case item @ Left(Transfer(tx1, tx2)) if tx1.transactionId == id || tx2.transactionId == id =>
                           item
                       }
                     },
                   onClose = routerCtl.set(PageParams.lensSidePanelTransaction.replace(None)(pageParams)),
                   visible = pageParams.sidePanelTransaction.nonEmpty,
-                  transactionsInfo = state.info
+                  transactionsInfo = transactionsInfo
                 )
               )
             )
           )
         )
       }
-      .build
+  }.build
 
 }

@@ -1,8 +1,6 @@
 package maasertracker.js
 
-import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import scala.math.Ordering.Implicits.seqOrdering
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 
@@ -10,7 +8,12 @@ import org.scalajs.dom
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{AsyncCallback, ScalaComponent}
 
-import maasertracker.{PlaidItem, TransactionsInfo, Transfer}
+import maasertracker.TransactionsInfo
+
+trait Refresher {
+  def reloadTransactions: AsyncCallback[Unit]
+  def reloadMatchers: AsyncCallback[Unit]
+}
 
 object Main {
   @js.native
@@ -18,47 +21,57 @@ object Main {
   private val CSS: js.Object = js.native
   locally(CSS)
 
-  case class State(info: TransactionsInfo, items: Seq[PlaidItem], categories: Seq[List[String]])
+  private sealed trait State
+  private object State {
+    case object Pending                                    extends State
+    case class Failure(error: String)                      extends State
+    case class Success(transactionsInfo: TransactionsInfo) extends State
+  }
 
-  private def loadData(setState: Either[String, State] => AsyncCallback[Unit],
-                       retry: FiniteDuration = 1.seconds): AsyncCallback[Unit] =
-    Api.Transactions.get
-      .zip(Api.Items.get)
-      .flatMap { case (info, items) =>
-        val categories =
-          info
-            .transactions
-            .flatMap {
-              case Right(tx)                => Seq(tx.category)
-              case Left(Transfer(tx1, tx2)) => Seq(tx1.category, tx2.category)
-            }
-            .to(SortedSet)
-        val state      = State(info = info, items = items, categories = categories.toSeq)
-        setState(Right(state))
-      }
+  private def update(setState: State => AsyncCallback[Unit], retry: FiniteDuration)(
+      load: AsyncCallback[TransactionsInfo]): AsyncCallback[Unit] =
+    load
+      .flatMap(info => setState(State.Success(info)))
       .handleError { t =>
         t.printStackTrace()
-        setState(Left(t.toString)) >>
-          loadData(setState, (retry * 2).min(2.minute)).delay(retry)
+        val duration = (retry * 2).min(2.minute)
+        setState(State.Failure(t.toString)) >>
+          loadAll(setState, duration).delay(retry)
       }
 
-  val component =
+  private def loadAll(setState: State => AsyncCallback[Unit], duration: FiniteDuration) =
+    update(setState, duration)(Api.Transactions.get
+      .zip(Api.MatchRules.get)
+      .map { case (transactions, matchers) => TransactionsInfo(transactions, matchers) })
+
+  private val component                                                                 =
     ScalaComponent.builder[Unit]
-      .initialState(Option.empty[Either[String, State]])
+      .initialState[State](State.Pending)
       .render { self =>
         self.state match {
-          case None               => <.div("Loading...")
-          case Some(Left(error))  => <.div("ERROR: " + error)
-          case Some(Right(state)) =>
+          case State.Pending                   => <.div("Loading...")
+          case State.Failure(error)            => <.div("ERROR: " + error)
+          case State.Success(transactionsInfo) =>
             Router.router(
               Router.Props(
-                state = state,
-                refresh = loadData(state => self.setStateAsync(Some(state))).toCallback
+                info = transactionsInfo,
+                refresh = new Refresher {
+                  override def reloadTransactions =
+                    update(self.setStateAsync, 1.seconds)(
+                      Api.Transactions.get
+                        .map(transactions => transactionsInfo.copy(transactions = transactions))
+                    )
+                  override def reloadMatchers     =
+                    update(self.setStateAsync, 1.seconds)(
+                      Api.MatchRules.get
+                        .map(matchers => transactionsInfo.copy(matchers = matchers))
+                    )
+                }
               )
             )
         }
       }
-      .componentDidMount(self => loadData(state => self.setStateAsync(Some(state))))
+      .componentDidMount(self => loadAll(self.setStateAsync, 1.seconds))
       .build
 
   def main(args: Array[String]): Unit = component().renderIntoDOM(dom.document.getElementById("container"))

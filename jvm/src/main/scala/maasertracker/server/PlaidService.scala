@@ -70,6 +70,7 @@ final class PlaidService(val plaidApi: PlaidApi) {
         .accessToken(item.accessToken)
         .startDate(start)
         .endDate(end)
+        .options(new TransactionsGetRequestOptions().daysRequested(730))
 
     def loop(responses: Seq[Response[TransactionsGetResponse]]): IO[Seq[Response[TransactionsGetResponse]]] = {
       lazy val totalSoFar = responses.map(_.body.getTransactions.size()).sum
@@ -79,7 +80,7 @@ final class PlaidService(val plaidApi: PlaidApi) {
       if (responses.forall(_.isSuccessful) && hasMore) {
         val request =
           transactionsGetRequest.options(
-            new TransactionsGetRequestOptions()
+            transactionsGetRequest.getOptions
               .count(pageSize)
               .offset(totalSoFar)
           )
@@ -95,9 +96,10 @@ final class PlaidService(val plaidApi: PlaidApi) {
     loop(Nil)
   }
 
-  def transactionsInfo(items: Seq[PlaidItem]) = {
+  def loadTransactions(items: Seq[PlaidItem]) = {
     def fetch(item: PlaidItem, startDate: LocalDate)
-        : IO[Either[(PlaidItem, Seq[PlaidError]), (Seq[AccountInfo], Seq[maasertracker.Transaction])]] = {
+        : IO[Either[(PlaidItem, Seq[PlaidError]),
+                    ((maasertracker.PlaidItem, Seq[AccountInfo]), Seq[maasertracker.Transaction])]] = {
       println("Getting transactions for " + item + " since " + startDate)
 
       getTransactions(item, startDate, LocalDate.now())
@@ -112,7 +114,7 @@ final class PlaidService(val plaidApi: PlaidApi) {
             val transactions  = successes.flatMap(_.getTransactions.asScala).map(mkTransaction)
             val returnedTxIds = transactions.map(_.transactionId).toSet
             println(s"Received ${returnedTxIds.size} transactions for ${item.institution.name}")
-            Right((accounts, transactions))
+            Right(((item.toShared, accounts), transactions))
           }
         }
     }
@@ -125,24 +127,18 @@ final class PlaidService(val plaidApi: PlaidApi) {
           case None                                                  => LocalDate.now().minusDays(90) -> BigDecimal(0)
         }
       result <- items.traverse(item => fetch(item, startDate))
-      matchRules <- MatchRulesService.load
-    } yield {
-      val (errors, successes) = result.partitionMap(identity)
-      val (accounts, txs)     = successes.unzip
-
-      TransactionsInfo(
-        accounts = accounts.flatten.map(account => account.id -> account).toMap,
-        transactions =
-          txs
-            .flatten
-            .sortBy(_.date)
-            .dropWhile(_.date.isBefore(startDate))
-            .map(Right(_)),
-        startingMaaserBalance = initialMaaserBalance.doubleValue,
-        matchers = matchRules.matchers,
-        errors = errors.toMap.map { case (k, v) => k.itemId -> v }
-      )
-        .combineTransfers
-    }
+      (errors, successes)               = result.partitionMap(identity)
+      (accounts, txs)                   = successes.unzip
+    } yield Transactions(
+      accounts = AccountInfos(accounts),
+      items =
+        txs
+          .flatten
+          .sortBy(_.date)
+          .dropWhile(_.date.isBefore(startDate))
+          .map(Right(_)),
+      startingMaaserBalance = initialMaaserBalance.doubleValue,
+      errors = errors.toMap.map { case (k, v) => k.itemId -> v }
+    )
   }
 }

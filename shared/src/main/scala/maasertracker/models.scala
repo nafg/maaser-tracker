@@ -1,9 +1,7 @@
 package maasertracker
 
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
-import cats.implicits.*
 import io.circe.Codec
 import io.circe.generic.JsonCodec
 import maasertracker.generated.models.MatchRuleRow
@@ -25,6 +23,12 @@ case class Account(name: String, subtype: String)
 
 @JsonCodec
 case class AccountInfo(id: String, institution: Institution, account: Account)
+
+@JsonCodec
+case class AccountInfos(accounts: Seq[(PlaidItem, Seq[AccountInfo])]) {
+  lazy val byId: Map[String, AccountInfo] = accounts.flatMap(_._2.map(info => info.id -> info)).toMap
+  lazy val items                          = accounts.map(_._1)
+}
 
 @JsonCodec
 case class Transaction(accountId: String,
@@ -101,99 +105,11 @@ case class Matchers(transfer: Seq[TransactionMatcher],
                     maaserPayment: Seq[TransactionMatcher])
 
 @JsonCodec
-case class TransactionsInfo(accounts: Map[String, AccountInfo],
-                            transactions: Seq[TransactionsInfo.Item],
-                            startingMaaserBalance: Double,
-                            matchers: Matchers,
-                            errors: Map[String, Seq[PlaidError]]) {
-  private def matches(tx: Transaction, matcher: TransactionMatcher) =
-    matcher.id.forall(_ == tx.transactionId) &&
-      matcher.institution.forall(_ == accounts(tx.accountId).institution.name) &&
-      matcher.description.forall(_.trim == tx.name.trim) &&
-      matcher.category.forall(tx.category.startsWith(_)) &&
-      matcher.minAmount.forall(tx.amount >= _) &&
-      matcher.maxAmount.forall(tx.amount <= _)
-
-  def combineTransfers = {
-    def canBeTransfer(tx: Transaction) = matchers.transfer.exists(matches(tx, _))
-
-    def isTransferPair(a: Transaction, b: Transaction) =
-      canBeTransfer(a) && canBeTransfer(b) &&
-        a.accountId != b.accountId &&
-        a.amount == -b.amount &&
-        ChronoUnit.DAYS.between(a.date, b.date).abs < 7
-
-    def loop(txs: List[TransactionsInfo.Item]): List[TransactionsInfo.Item] =
-      txs match {
-        case Nil            => Nil
-        case Left(_) :: as  => loop(as)
-        case Right(a) :: as =>
-          object TransferMatch {
-            def unapply(b: Transaction): Option[Transfer] =
-              (isTransferPair(a, b), math.signum(a.amount), math.signum(b.amount)) match {
-                case (true, 1, -1) => Some(Transfer(a, b))
-                case (true, -1, 1) => Some(Transfer(b, a))
-                case _             => None
-              }
-          }
-
-          def loop2(as2: List[TransactionsInfo.Item]): (TransactionsInfo.Item, List[TransactionsInfo.Item]) =
-            as2 match {
-              case Nil                                    => Right(a)       -> Nil
-              case Right(TransferMatch(transfer)) :: as22 => Left(transfer) -> as22
-              case a2 :: as22                             => loop2(as22).map(a2 :: _)
-            }
-
-          val (x, xx) = loop2(as)
-          x :: loop(xx)
-      }
-
-    val removed = loop(transactions.toList)
-    copy(transactions = removed)
-  }
-
-  private class MatcherExtractor(matchers: Seq[TransactionMatcher]) {
-    def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher)] = matchers.find(matches(tx, _)).map(tx -> _)
-  }
-
-  private object AsIncome         extends MatcherExtractor(matchers.income)
-  private object AsExemptedIncome extends MatcherExtractor(matchers.nonMaaserIncome)
-  private object AsMaaserPayment  extends MatcherExtractor(matchers.maaserPayment) {
-    override def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher)] =
-      if (tx.amount <= 0) None
-      else super.unapply(tx)
-  }
-
-  lazy val tagsAndMatchers: Map[String, (Tags.Value, TransactionMatcher)] =
-    transactions
-      .collect {
-        case Right(AsMaaserPayment(tx, matcher))  => (tx.transactionId, (Tags.Maaser, matcher))
-        case Right(AsExemptedIncome(tx, matcher)) => (tx.transactionId, (Tags.Exempted, matcher))
-        case Right(AsIncome(tx, matcher))         => (tx.transactionId, (Tags.Income, matcher))
-      }
-      .toMap
-
-  lazy val tags = tagsAndMatchers.view.mapValues(_._1).toMap
-
-  lazy val maaserBalances = {
-    val maaserBalances0 =
-      transactions.reverse.scanRight(Option.empty[String] -> startingMaaserBalance) {
-        case (Left(_), (_, m))   => None -> m
-        case (Right(tx), (_, m)) =>
-          Some(tx.transactionId) ->
-            (tags.get(tx.transactionId) match {
-              case Some(Tags.Income) => m - tx.amount / 10
-              case Some(Tags.Maaser) => m - tx.amount
-              case _                 => m
-            })
-      }
-    maaserBalances0
-      .collect { case (Some(id), d) => (id, d) }
-      .toMap
-  }
-}
-
-object TransactionsInfo {
+case class Transactions(accounts: AccountInfos,
+                        items: Seq[Transactions.Item],
+                        startingMaaserBalance: Double,
+                        errors: Map[String, Seq[PlaidError]])
+object Transactions {
   type Item = Either[Transfer, Transaction]
 
   implicit def transferOrTransaction: Codec.AsObject[Item] =
