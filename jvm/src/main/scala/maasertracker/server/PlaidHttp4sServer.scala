@@ -53,7 +53,7 @@ object PlaidHttp4sServer extends IOApp {
         case None       => NotFound()
       }
 
-    def createLinkTokenRequest = createLinkToken(List(Products.AUTH, Products.TRANSACTIONS))
+    def createLinkTokenRequest = createLinkToken(List(Products.TRANSACTIONS))
 
     HttpRoutes.of[IO] {
       case GET -> Root / "plaid-link-token.jsonp" =>
@@ -160,7 +160,6 @@ object PlaidHttp4sServer extends IOApp {
       .createService(classOf[PlaidApi])
   }
   private def app =
-
     EmberServerBuilder.default[IO]
       .withHost(host"0.0.0.0")
       .withPort(port"9090")
