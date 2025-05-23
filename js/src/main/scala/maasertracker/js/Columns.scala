@@ -7,8 +7,6 @@ import maasertracker.js.facades.ant
 import maasertracker.*
 
 class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
-  private def formatDollars(amount: Double) = f"$$$amount%,.2f"
-
   private def accountNameParts(acct: AccountInfo) = {
     val i = acct.institution.name
     val a = acct.account.name.replaceAll(i, "").trim

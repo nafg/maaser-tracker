@@ -1,11 +1,11 @@
 package maasertracker.js
 
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{Callback, ScalaComponent}
+import japgolly.scalajs.react.{Callback, React, ScalaComponent}
 
-import maasertracker.{PlaidData, TransactionsInfo}
 import maasertracker.js.facades.ant
 import maasertracker.js.facades.ant.Drawer
+import maasertracker.{PlaidData, TransactionsInfo}
 
 object TransactionRulePanel {
   case class Props(
@@ -32,21 +32,30 @@ object TransactionRulePanel {
       )(
         props.transaction.fold(EmptyVdom) {
           case Right(tx)      =>
-            <.div(
-              <.h3("Transaction Details"),
-              <.p(s"ID: ${tx.transactionId}"),
-              <.p(s"Date: ${tx.date}"),
-              <.p(s"Description: ${tx.name}"),
-              <.p(s"Amount: ${tx.amount}"),
-              <.p(s"Category: ${tx.category.mkString(" > ")}"),
-              <.h3("Matching Rules"),
-              <.p("No matching rules found for this transaction."),
+            React.Fragment(
+              ant.Descriptions(
+                title = "Transaction Details",
+                bordered = true,
+                column = 1,
+                size = ant.Descriptions.Size.Small,
+                layout = ant.Descriptions.Layout.Vertical
+              )(
+                ant.Descriptions.Item("ID")(tx.transactionId),
+                ant.Descriptions.Item("Date")(tx.date.toString),
+                ant.Descriptions.Item("Description")(tx.name),
+                ant.Descriptions.Item("Amount")(formatDollars(tx.amount)),
+                ant.Descriptions.Item("Category")(tx.category.mkString(" > "))
+              ),
               <.div(
-                ^.marginTop := "20px",
-                ant.Button(
-                  buttonType = ant.Button.Type.Primary,
-                  onClick = _ => Callback.alert("Create Rule feature coming soon")
-                )("Create Rule from This")
+                <.h3("Matching Rules"),
+                <.p("No matching rules found for this transaction."),
+                <.div(
+                  ^.marginTop := "20px",
+                  ant.Button(
+                    buttonType = ant.Button.Type.Primary,
+                    onClick = _ => Callback.alert("Create Rule feature coming soon")
+                  )("Create Rule from This")
+                )
               )
             )
           case Left(transfer) =>
