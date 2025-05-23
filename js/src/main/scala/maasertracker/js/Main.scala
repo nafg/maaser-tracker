@@ -1,5 +1,8 @@
 package maasertracker.js
 
+import java.time.LocalTime
+import java.time.format.{DateTimeFormatter, FormatStyle}
+
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
@@ -23,9 +26,9 @@ object Main {
 
   private sealed trait State
   private object State {
-    case object Pending                                    extends State
-    case class Failure(error: String)                      extends State
-    case class Success(transactionsInfo: TransactionsInfo) extends State
+    case object Pending                                          extends State
+    case class Failure(error: String, retryTime: FiniteDuration) extends State
+    case class Success(transactionsInfo: TransactionsInfo)       extends State
   }
 
   private def update(setState: State => AsyncCallback[Unit], retry: FiniteDuration)(
@@ -34,9 +37,9 @@ object Main {
       .flatMap(info => setState(State.Success(info)))
       .handleError { t =>
         t.printStackTrace()
-        val duration = (retry * 2).min(2.minute)
-        setState(State.Failure(t.toString)) >>
-          loadAll(setState, duration).delay(retry)
+        setState(State.Failure(t.toString, retry)) >>
+          loadAll(setState, duration = (retry * 2).min(2.minute))
+            .delay(retry)
       }
 
   private def loadAll(setState: State => AsyncCallback[Unit], duration: FiniteDuration) =
@@ -50,7 +53,15 @@ object Main {
       .render { self =>
         self.state match {
           case State.Pending                   => <.div("Loading...")
-          case State.Failure(error)            => <.div("ERROR: " + error)
+          case State.Failure(error, retryTime) =>
+            <.div(
+              "ERROR: ",
+              error,
+              <.br,
+              "Retry at ",
+              LocalTime.now().plusSeconds(retryTime.toSeconds)
+                .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM))
+            )
           case State.Success(transactionsInfo) =>
             Router.router(
               Router.Props(
