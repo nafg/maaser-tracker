@@ -43,8 +43,8 @@ object Descriptions {
       .bordered(bordered)
       .colon(colon)
       .foldNull(_.column)(column)
-      .foldNull(_.layout)(layout.repr)
-      .foldNull(_.size)(size.repr)
+      .foldNull(_.layout)(if (layout == null) null else layout.repr)
+      .foldNull(_.size)(if (size == null) null else size.repr)
       .foldNull(_.title)(title.rawNode)
       .apply(items.map(_.toAnt)*)
 }

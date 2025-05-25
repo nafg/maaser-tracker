@@ -3,8 +3,8 @@ package maasertracker.js
 import japgolly.scalajs.react.ReactMonocle.MonocleReactExt_StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 
-import maasertracker.js.facades.ant
 import maasertracker.*
+import maasertracker.js.facades.ant
 
 class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
   private def accountNameParts(acct: AccountInfo) = {
@@ -33,14 +33,34 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
 
   val accountColType =
     ColType("account", "Account")
-      .withRenderEach(t => accountLabel(transactionsInfo.plaidData.accounts.byId(t.accountId)))
+      .withRenderEach { t =>
+        <.div(
+          ^.fontWeight.bold
+            .when(transactionsInfo.matchersFor(t).exists(_._2.exists(_.value.institution.isDefined))),
+          accountLabel(transactionsInfo.plaidData.accounts.byId(t.accountId))
+        )
+      }
       .filtering(_.accountId)(FilterSpecs.accountFilterSpec)
 
-  val nameColType = ColType("name", "Name").withRenderEach(_.name)
+  val nameColType =
+    ColType("name", "Name")
+      .withRenderEach { transaction =>
+        <.div(
+          ^.fontWeight.bold
+            .when(transactionsInfo.matchersFor(transaction).exists(_._2.exists(_.value.description.isDefined))),
+          transaction.name
+        )
+      }
 
   val categoryColType =
     ColType("category", "Category")
-      .withRenderEach(_.category.mkString(" > "))
+      .withRenderEach { transaction =>
+        <.div(
+          ^.fontWeight.bold
+            .when(transactionsInfo.matchersFor(transaction).exists(_._2.exists(_.value.category.isDefined))),
+          transaction.category.mkString(" > ")
+        )
+      }
       .filtering(_.category)(FilterSpecs.categoryFilterSpec)
 
   val typeColType = ColType("transactionType", "Type").withRenderEach(_.transactionType)
@@ -56,6 +76,12 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
               ^.color.green
             else
               ^.color.gray,
+            ^.fontWeight.bold
+              .when(
+                transactionsInfo.matchersFor(t).exists { case (_, matchers) =>
+                  matchers.exists(ent => ent.value.minAmount.isDefined || ent.value.maxAmount.isDefined)
+                }
+              ),
             formatDollars(-t.amount)
           )
         },
@@ -70,7 +96,7 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
       .withRender { tx => pageParams =>
         def idMatcher =
           TransactionMatcher(
-            id = Some(tx.transactionId),
+            transactionId = Some(tx.transactionId),
             institution = None,
             description = None,
             category = None,
@@ -111,14 +137,14 @@ class Columns(transactionsInfo: TransactionsInfo, refresh: Refresher) {
             def deleteMatcher() = Api.MatchRules.delete(Kind.forTag(tag), matcher)
 
             dropdown(tag.toString)(
-              if (matcher.id.isEmpty) Nil
+              if (matcher.value.transactionId.isEmpty) Nil
               else
                 Tags.values.filterNot(_ == tag).toList.map { t =>
                   ant.Dropdown.Item(t.toString)(<.span("Change to ", <.b(t.toString))) {
                     (deleteMatcher() >> addIdTagRule(t) >> refresh.reloadMatchers).toCallback
                   }
                 } ++
-                  Option.when(matcher.id.isDefined) {
+                  Option.when(matcher.value.transactionId.isDefined) {
                     ant.Dropdown.Item("Remove tag")("Remove tag") {
                       (deleteMatcher() >> refresh.reloadMatchers).toCallback
                     }

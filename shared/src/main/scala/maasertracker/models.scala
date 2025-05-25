@@ -2,8 +2,11 @@ package maasertracker
 
 import java.time.LocalDate
 
+import slick.additions.entity.{EntityKey, KeyedEntity}
+
 import io.circe.Codec
 import io.circe.generic.JsonCodec
+import maasertracker.Codecs.{decodeKeyedEntity, encodeKeyedEntity, encodeMaybeKindKey, decodeMaybeKindKey}
 import maasertracker.generated.models.MatchRuleRow
 
 @JsonCodec
@@ -69,16 +72,20 @@ case class Transfer(withdrawal: Transaction, deposit: Transaction) {
 }
 
 @JsonCodec
-case class TransactionMatcher(id: Option[String],
+case class TransactionMatcher(transactionId: Option[String],
                               institution: Option[String],
                               description: Option[String],
                               category: Option[Seq[String]],
                               minAmount: Option[BigDecimal],
                               maxAmount: Option[BigDecimal])
 object TransactionMatcher {
+  type Lookup = slick.additions.entity.Lookup[Long, TransactionMatcher]
+  type Key    = EntityKey[Long, TransactionMatcher]
+  type KEnt   = KeyedEntity[Long, TransactionMatcher]
+
   def fromRow(row: MatchRuleRow): TransactionMatcher =
     TransactionMatcher(
-      id = row.isTransactionId,
+      transactionId = row.isTransactionId,
       institution = row.isInstitution,
       description = row.isDescription,
       category = row.isCategory.map(_.linesIterator.toSeq),
@@ -89,7 +96,7 @@ object TransactionMatcher {
   def toRow(kind: String, matcher: TransactionMatcher): MatchRuleRow =
     MatchRuleRow(
       kind = kind,
-      isTransactionId = matcher.id,
+      isTransactionId = matcher.transactionId,
       isDescription = matcher.description,
       isInstitution = matcher.institution,
       isCategory = matcher.category.map(_.mkString("\n")),
@@ -99,10 +106,17 @@ object TransactionMatcher {
 }
 
 @JsonCodec
-case class Matchers(transfer: Seq[TransactionMatcher],
-                    income: Seq[TransactionMatcher],
-                    nonMaaserIncome: Seq[TransactionMatcher],
-                    maaserPayment: Seq[TransactionMatcher])
+case class Matchers(byKind: Map[Option[Kind], Seq[TransactionMatcher.KEnt]]) {
+  lazy val transfer        = byKind.getOrElse(Some(Kind.Transfer), Nil)
+  lazy val income          = byKind.getOrElse(Some(Kind.Income), Nil)
+  lazy val nonMaaserIncome = byKind.getOrElse(Some(Kind.Exemption), Nil)
+  lazy val maaserPayment   = byKind.getOrElse(Some(Kind.Fulfillment), Nil)
+
+  lazy val byId: Map[TransactionMatcher.Key, (Option[Kind], TransactionMatcher.KEnt)] =
+    byKind.flatMap {
+      case (kind, matchers) => matchers.map(m => m.toEntityKey -> (kind, m)).toMap
+    }
+}
 
 @JsonCodec
 case class PlaidData(accounts: AccountInfos,

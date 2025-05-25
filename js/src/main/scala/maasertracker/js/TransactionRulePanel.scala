@@ -1,5 +1,7 @@
 package maasertracker.js
 
+import japgolly.scalajs.react.ReactMonocle.MonocleReactExt_StateSnapshot
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Callback, React, ScalaComponent}
 
@@ -12,7 +14,9 @@ object TransactionRulePanel {
       transaction: Option[PlaidData.Item],
       visible: Boolean,
       transactionsInfo: TransactionsInfo,
-      onClose: Callback
+      pageParams: StateSnapshot[PageParams],
+      onClose: Callback,
+      refresher: Refresher
   )
 
   val component = ScalaComponent
@@ -46,9 +50,37 @@ object TransactionRulePanel {
                 ant.Descriptions.Item("Amount")(formatDollars(tx.amount)),
                 ant.Descriptions.Item("Category")(tx.category.mkString(" > "))
               ),
+              props.transactionsInfo
+                .matchersFor(tx)
+                .toReactFragment { case (maybeKind, matchers) =>
+                  ant.List(
+                    header = <.h3("Matching ", maybeKind.fold("Unknown")(_.toString), " Rules"),
+                    itemLayout = ant.List.ItemLayout.Vertical
+                  )(
+                    matchers
+                      .map { matcher =>
+                        ant.List.Item(
+                          actions = Seq(
+                            ant.Button(
+                              onClick =
+                                _ => props.pageParams.setStateL(PageParams.lensMatchMatcher)(Some(matcher.toEntityKey))
+                            )("Filter"),
+                            ant.Button(
+                              danger = true,
+                              onClick = _ =>
+                                Callback.traverseOption(maybeKind) { kind =>
+                                  (Api.MatchRules.delete(kind, matcher.toEntityKey) >> props.refresher.reloadMatchers)
+                                    .toCallback
+                                }
+                            )("Delete")
+                          )
+                        )(
+                          renderMatcher(matcher.value)
+                        )
+                      }
+                  )
+                },
               <.div(
-                <.h3("Matching Rules"),
-                <.p("No matching rules found for this transaction."),
                 <.div(
                   ^.marginTop := "20px",
                   ant.Button(
@@ -74,6 +106,8 @@ object TransactionRulePanel {
       transaction: Option[PlaidData.Item],
       visible: Boolean,
       transactionsInfo: TransactionsInfo,
-      onClose: Callback
-  ) = component(Props(transaction, visible, transactionsInfo, onClose))
+      pageParams: StateSnapshot[PageParams],
+      onClose: Callback,
+      refresher: Refresher
+  ) = component(Props(transaction, visible, transactionsInfo, pageParams, onClose, refresher))
 }

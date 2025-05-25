@@ -16,6 +16,7 @@ import com.plaid.client.model.{ItemRemoveRequest, Products}
 import com.plaid.client.request.PlaidApi
 import com.typesafe.config.ConfigFactory
 import io.circe.syntax.*
+import maasertracker.Codecs.decodeEntityKey
 import maasertracker.generated.models.{PlaidInstitutionRow, PlaidItemRow}
 import maasertracker.generated.tables.SlickProfile.api.*
 import maasertracker.generated.tables.Tables
@@ -140,12 +141,9 @@ object PlaidHttp4sServer extends IOApp {
         } yield res
       case req @ POST -> Root / "match-rules" / kind / "delete" =>
         for {
-          matcher <- req.as[TransactionMatcher]
-          row    = TransactionMatcher.toRow(kind, matcher)
-          delete = MatchRulesService.findRow(row).delete
-          _      = println(delete.statements.mkString("\n"))
-          _   <- delete.toIO
-          res <- Ok(().asJson)
+          matcher <- req.as[TransactionMatcher.Key]
+          _       <- MatchRulesService.delete(kind, matcher).toIO
+          res     <- Ok(().asJson)
         } yield res
     }
 

@@ -10,16 +10,23 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 case class TransactionsInfo private (plaidData: PlaidData, matchers: Matchers) {
-  private def matches(tx: Transaction, matcher: TransactionMatcher) =
-    matcher.id.forall(_ == tx.transactionId) &&
+  def matches(tx: Transaction, matcher: TransactionMatcher) =
+    matcher.transactionId.forall(_ == tx.transactionId) &&
       matcher.institution.forall(_ == plaidData.accounts.byId(tx.accountId).institution.name) &&
       matcher.description.forall(_.trim == tx.name.trim) &&
       matcher.category.forall(tx.category.startsWith(_)) &&
-      matcher.minAmount.forall(tx.amount >= _) &&
-      matcher.maxAmount.forall(tx.amount <= _)
+      matcher.minAmount.forall(_ <= tx.amount) &&
+      matcher.maxAmount.forall(_ >= tx.amount)
+
+  def matchersFor(tx: Transaction) =
+    matchers.byKind
+      .view
+      .mapValues(_.filter(matcher => matches(tx, matcher.value)))
+      .filter(_._2.nonEmpty)
+      .toMap
 
   lazy val combinedItems = {
-    def canBeTransfer(tx: Transaction) = matchers.transfer.exists(matches(tx, _))
+    def canBeTransfer(tx: Transaction) = matchers.transfer.exists(matcher => matches(tx, matcher.value))
 
     def isTransferPair(a: Transaction, b: Transaction) =
       canBeTransfer(a) && canBeTransfer(b) &&
@@ -57,19 +64,20 @@ case class TransactionsInfo private (plaidData: PlaidData, matchers: Matchers) {
   def copy(transactions: PlaidData = plaidData, matchers: Matchers = matchers) =
     new TransactionsInfo(transactions, matchers)
 
-  private class MatcherExtractor(matchers: Seq[TransactionMatcher]) {
-    def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher)] = matchers.find(matches(tx, _)).map(tx -> _)
+  private class MatcherExtractor(matchers: Seq[TransactionMatcher.KEnt]) {
+    def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher.KEnt)] =
+      matchers.find(matcher => matches(tx, matcher.value)).map(tx -> _)
   }
 
   private object AsIncome         extends MatcherExtractor(matchers.income)
   private object AsExemptedIncome extends MatcherExtractor(matchers.nonMaaserIncome)
   private object AsMaaserPayment  extends MatcherExtractor(matchers.maaserPayment) {
-    override def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher)] =
+    override def unapply(tx: Transaction): Option[(Transaction, TransactionMatcher.KEnt)] =
       if (tx.amount <= 0) None
       else super.unapply(tx)
   }
 
-  lazy val tagsAndMatchers: Map[String, (Tags.Value, TransactionMatcher)] =
+  lazy val tagsAndMatchers: Map[String, (Tags.Value, TransactionMatcher.KEnt)] =
     combinedItems
       .collect {
         case Right(AsMaaserPayment(tx, matcher))  => (tx.transactionId, (Tags.Maaser, matcher))

@@ -57,6 +57,6 @@ object Dropdown {
 
   def apply(triggers: Seq[Trigger] = Seq(Trigger.Hover)): Builder = new Builder(triggers)
 
-  def click = apply(List(Trigger.Click))
-  def hover = apply(List(Trigger.Hover))
+  def click = apply(Seq(Trigger.Click))
+  def hover = apply(Seq(Trigger.Hover))
 }

@@ -1,6 +1,7 @@
 package maasertracker.js
 
 import maasertracker.*
+import maasertracker.Codecs.encodeEntityKey
 
 object Api {
   object LinkTokens {
@@ -19,9 +20,9 @@ object Api {
   }
 
   object MatchRules {
-    def get                                             = Ajax.get[Matchers]("/api/match-rules")
-    def add(kind: Kind, matcher: TransactionMatcher)    = Ajax.post[Unit](s"/api/match-rules/${kind.name}/add", matcher)
-    def delete(kind: Kind, matcher: TransactionMatcher) =
-      Ajax.post[Unit](s"/api/match-rules/${kind.name}/delete", matcher)
+    def get                                          = Ajax.get[Matchers]("/api/match-rules")
+    def add(kind: Kind, matcher: TransactionMatcher) = Ajax.post[Unit](s"/api/match-rules/${kind.name}/add", matcher)
+    def delete(kind: Kind, matcher: TransactionMatcher.Lookup) =
+      Ajax.post[Unit](s"/api/match-rules/${kind.name}/delete", matcher.toEntityKey)
   }
 }
