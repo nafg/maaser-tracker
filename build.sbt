@@ -89,11 +89,12 @@ val js = project
     scalaJSLinkerConfig             := scalaJSLinkerConfig.value.withSourceMap(false),
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "dev.optics"                        %%% "monocle-macro"      % "3.3.0",
-      "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3" % "2.1.2",
-      "io.github.cquiroz"                 %%% "scala-java-time"    % "2.6.0",
-      "com.nrinaudo"                      %%% "kantan.csv"         % "0.8.0",
-      "io.github.nafg.antd"               %%% "antd-scalajs-react" % "0.0.1"
+      "dev.optics"                        %%% "monocle-macro"        % "3.3.0",
+      "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3"   % "2.1.2",
+      "io.github.cquiroz"                 %%% "scala-java-time"      % "2.6.0",
+      "io.github.cquiroz"                 %%% "scala-java-time-tzdb" % "2.6.0",
+      "com.nrinaudo"                      %%% "kantan.csv"           % "0.8.0",
+      "io.github.nafg.antd"               %%% "antd-scalajs-react"   % "0.0.1"
     ),
     Compile / npmDependencies ++= Seq(
       "react"     -> "17.0.2",
