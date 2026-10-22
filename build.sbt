@@ -69,7 +69,7 @@ val jvm = project
       "com.plaid"           % "plaid-java"                 % "33.1.0",
       "org.flywaydb"        % "flyway-database-postgresql" % "11.8.2",
       "io.github.nafg"     %% "slick-additions"            % SlickAdditionsVersion,
-      "com.typesafe.slick" %% "slick-hikaricp"             % "3.4.1",
+      "com.typesafe.slick" %% "slick-hikaricp"             % "3.6.1",
       "org.postgresql"      % "postgresql"                 % "42.7.5",
       "org.scala-lang"      % "scala-reflect"              % scalaVersion.value,
       "ch.qos.logback"      % "logback-classic"            % LogbackVersion
