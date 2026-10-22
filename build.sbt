@@ -22,7 +22,7 @@ inThisBuild(
 )
 
 val CirceVersion          = "0.14.13"
-val SlickAdditionsVersion = "0.12.1"
+val SlickAdditionsVersion = "0.17.0"
 
 val migrations = project
   .enablePlugins(SlickFlywayPlugin)
