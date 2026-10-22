@@ -12,7 +12,7 @@ object Descriptions {
   sealed abstract class Size(val repr: antdStrings.middle | antdStrings.small | antdStrings.default)
   object Size {
     case object Default extends Size(antdStrings.default)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Middle  extends Size(antdStrings.middle)
     case object Small   extends Size(antdStrings.small)
   }

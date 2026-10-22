@@ -26,7 +26,7 @@ package object js {
       matcher.maxAmount.map(max => <.strong("Max Amount is ", formatDollars(max))))
       .mkReactFragment(" and ")
 
-  //noinspection ScalaUnusedSymbol
+  // noinspection ScalaUnusedSymbol
   def nullableToOption[A: ClassTag](value: A | Null): Option[A] =
     value match {
       case value: A               => Some(value)

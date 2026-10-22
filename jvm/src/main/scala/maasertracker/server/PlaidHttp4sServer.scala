@@ -157,7 +157,7 @@ object PlaidHttp4sServer extends IOApp {
       .tap(_.setPlaidAdapter(ApiClient.Production))
       .createService(classOf[PlaidApi])
   }
-  private def app =
+  private def app   =
     EmberServerBuilder.default[IO]
       .withHost(host"0.0.0.0")
       .withPort(port"9090")

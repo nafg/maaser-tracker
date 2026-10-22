@@ -47,7 +47,7 @@ object Main {
       .zip(Api.MatchRules.get)
       .map { case (transactions, matchers) => TransactionsInfo(transactions, matchers) })
 
-  private val component                                                                 =
+  private val component =
     ScalaComponent.builder[Unit]
       .initialState[State](State.Pending)
       .render { self =>

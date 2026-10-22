@@ -11,15 +11,15 @@ object Button {
   sealed abstract class Type(val repr: ButtonType)
   object Type {
     case object Default extends Type(antdStrings.default)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Dashed  extends Type(antdStrings.dashed)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Ghost   extends Type(antdStrings.ghost)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Link    extends Type(antdStrings.link)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Primary extends Type(antdStrings.primary)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Text    extends Type(antdStrings.text_)
   }
 

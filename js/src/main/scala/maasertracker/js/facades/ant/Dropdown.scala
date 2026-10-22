@@ -12,15 +12,15 @@ object Dropdown {
   case class Item(key: String, danger: Boolean = false, disabled: Boolean = false)(val content: VdomNode)(
       val onClick: Callback)
       extends Child
-  //noinspection ScalaWeakerAccess
+  // noinspection ScalaWeakerAccess
   case object Divider extends Child
 
   sealed abstract class Trigger(val repr: antdStrings.click | antdStrings.hover | antdStrings.contextMenu)
-  //noinspection ScalaWeakerAccess
+  // noinspection ScalaWeakerAccess
   object Trigger {
     case object Click       extends Trigger(antdStrings.click)
     case object Hover       extends Trigger(antdStrings.hover)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object ContextMenu extends Trigger(antdStrings.contextMenu)
   }
 

@@ -48,7 +48,7 @@ object Tags extends Enumeration {
 }
 
 sealed abstract class Kind(val name: String)
-object Kind {
+object Kind               {
   case object Transfer    extends Kind("transfer")
   case object Income      extends Kind("income")
   case object Exemption   extends Kind("exemption")
@@ -123,7 +123,7 @@ case class PlaidData(accounts: AccountInfos,
                      transactions: Seq[Transaction],
                      startingMaaserBalance: Double,
                      errors: Map[String, Seq[PlaidError]])
-object PlaidData {
+object PlaidData          {
   type Item = Either[Transfer, Transaction]
 
   implicit def transferOrTransaction: Codec.AsObject[Item] =

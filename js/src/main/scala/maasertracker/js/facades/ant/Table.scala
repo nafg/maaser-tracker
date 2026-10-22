@@ -21,16 +21,16 @@ object Table {
   sealed abstract class Size(val repr: _SizeType)
   object Size {
     case object Small  extends Size(antdStrings.small)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Middle extends Size(antdStrings.middle)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Large  extends Size(antdStrings.large)
   }
 
   sealed abstract class Pagination(val repr: TablePaginationConfig | antdBooleans.`false`)
   object Pagination {
     case object False                                extends Pagination(antdBooleans.`false`)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case class Custom(config: TablePaginationConfig) extends Pagination(config)
   }
 

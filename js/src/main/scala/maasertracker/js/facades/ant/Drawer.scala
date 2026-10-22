@@ -14,9 +14,9 @@ object Drawer {
   object Placement {
     case object Left   extends Placement(antdStrings.left)
     case object Right  extends Placement(antdStrings.right)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Top    extends Placement(antdStrings.top)
-    //noinspection ScalaUnusedSymbol
+    // noinspection ScalaUnusedSymbol
     case object Bottom extends Placement(antdStrings.bottom)
   }
 

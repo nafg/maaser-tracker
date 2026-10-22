@@ -33,7 +33,7 @@ case class FilterSpec[P, A](key: String,
     lens.replace(keys.flatMap(filterItems.fromKey.get).toSet)
   }
 }
-object FilterSpec                                                                {
+object FilterSpec {
   def apply[P, A](key: String, lens: Lens[P, Set[FilterItem[A]]])(
       filterItems: TransactionsInfo => Iterable[FilterItem[A]],
       @unused dummy: Null = null): FilterSpec[P, A] =

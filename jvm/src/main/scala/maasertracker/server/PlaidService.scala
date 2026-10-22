@@ -97,9 +97,10 @@ final class PlaidService(val plaidApi: PlaidApi) {
   }
 
   def loadTransactions(items: Seq[PlaidItem]) = {
-    def fetch(item: PlaidItem, startDate: LocalDate)
-        : IO[Either[(PlaidItem, Seq[PlaidError]),
-                    ((maasertracker.PlaidItem, Seq[AccountInfo]), Seq[maasertracker.Transaction])]] = {
+    def fetch(item: PlaidItem, startDate: LocalDate): IO[Either[
+      (PlaidItem, Seq[PlaidError]),
+      ((maasertracker.PlaidItem, Seq[AccountInfo]), Seq[maasertracker.Transaction])
+    ]] = {
       println("Getting transactions for " + item + " since " + startDate)
 
       getTransactions(item, startDate, LocalDate.now())
