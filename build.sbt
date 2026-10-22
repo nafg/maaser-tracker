@@ -9,7 +9,7 @@ name := "maaser"
 inThisBuild(
   Seq(
     version      := "0.1",
-    scalaVersion := "2.13.16",
+    scalaVersion := "2.13.18",
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
