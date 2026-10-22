@@ -21,7 +21,7 @@ inThisBuild(
   )
 )
 
-val CirceVersion          = "0.14.13"
+val CirceVersion          = "0.14.17"
 val SlickAdditionsVersion = "0.12.1"
 
 val migrations = project
