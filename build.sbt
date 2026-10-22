@@ -90,7 +90,7 @@ val js = project
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
       "dev.optics"                        %%% "monocle-macro"        % "3.3.0",
-      "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3"   % "2.1.2",
+      "com.github.japgolly.scalajs-react" %%% "extra-ext-monocle3"   % "2.1.4",
       "io.github.cquiroz"                 %%% "scala-java-time"      % "2.6.0",
       "io.github.cquiroz"                 %%% "scala-java-time-tzdb" % "2.6.0",
       "com.nrinaudo"                      %%% "kantan.csv"           % "0.8.0",
